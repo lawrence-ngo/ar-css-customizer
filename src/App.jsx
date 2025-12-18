@@ -1459,7 +1459,7 @@ li {
               <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Typography Settings</h2>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Body Text</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
@@ -1563,7 +1563,7 @@ li {
                   </div>
                 </div>
 
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Headings</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
@@ -1707,7 +1707,7 @@ li {
                   </div>
                 </div>
 
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Buttons</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
@@ -1823,7 +1823,7 @@ li {
               <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Button Styles</h2>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Primary Button</h3>
                   
                   {[
@@ -1891,7 +1891,7 @@ li {
                   ))}
                 </div>
 
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Secondary Button</h3>
                   
                   {[
@@ -1957,7 +1957,7 @@ li {
                   ))}
                 </div>
 
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Border & Shape</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
