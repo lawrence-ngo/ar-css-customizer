@@ -686,6 +686,7 @@ li {
                       onChange={(e) => updateFont(font.id, 'type', e.target.value)}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -711,6 +712,7 @@ li {
                           placeholder="Paste the full Google Fonts link, e.g., https://fonts.googleapis.com/css2?family=Chakra+Petch..."
                           style={{
                             width: '100%',
+                          maxWidth: '100%',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -762,6 +764,7 @@ li {
                           placeholder="e.g., https://use.typekit.net/mch3imj.css"
                           style={{
                             width: '100%',
+                          maxWidth: '100%',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -806,6 +809,7 @@ li {
                       placeholder={font.type === 'google' ? 'e.g., Chakra Petch' : font.type === 'typekit' ? 'e.g., proxima-nova' : 'e.g., SweetSans'}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: (font.type === 'google' || font.type === 'typekit') ? '2px solid #667eea' : '1px solid #ddd',
                         borderRadius: '6px',
@@ -893,6 +897,7 @@ li {
                               placeholder="https://example.com/font.otf"
                               style={{
                                 width: '100%',
+                          maxWidth: '100%',
                                 padding: '8px',
                                 border: '1px solid #ddd',
                                 borderRadius: '4px',
@@ -911,6 +916,7 @@ li {
                                 onChange={(e) => updateFontFile(font.id, fileIndex, 'weight', e.target.value)}
                                 style={{
                                   width: '100%',
+                          maxWidth: '100%',
                                   padding: '8px',
                                   border: '1px solid #ddd',
                                   borderRadius: '4px',
@@ -938,6 +944,7 @@ li {
                                 onChange={(e) => updateFontFile(font.id, fileIndex, 'style', e.target.value)}
                                 style={{
                                   width: '100%',
+                          maxWidth: '100%',
                                   padding: '8px',
                                   border: '1px solid #ddd',
                                   borderRadius: '4px',
@@ -1464,6 +1471,7 @@ li {
                       onChange={(e) => setTypography({ ...typography, bodyFont: e.target.value })}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1545,6 +1553,7 @@ li {
                       placeholder="14px"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1566,6 +1575,7 @@ li {
                       onChange={(e) => setTypography({ ...typography, headingFont: e.target.value })}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1647,6 +1657,7 @@ li {
                       placeholder="36px"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1666,6 +1677,7 @@ li {
                       placeholder="20px"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1685,6 +1697,7 @@ li {
                       placeholder="1"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1706,6 +1719,7 @@ li {
                       onChange={(e) => setTypography({ ...typography, buttonFont: e.target.value })}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1785,6 +1799,7 @@ li {
                       onChange={(e) => setTypography({ ...typography, textTransform: e.target.value })}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1864,6 +1879,7 @@ li {
                           })}
                           style={{
                             width: '100%',
+                          maxWidth: '100%',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -1929,6 +1945,7 @@ li {
                           })}
                           style={{
                             width: '100%',
+                          maxWidth: '100%',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -1957,6 +1974,7 @@ li {
                       placeholder="0px"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1979,6 +1997,7 @@ li {
                       placeholder="1px solid var(--color-button)"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1999,6 +2018,7 @@ li {
                       })}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2084,6 +2104,7 @@ li {
                         })}
                         style={{
                           width: '100%',
+                          maxWidth: '100%',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2161,6 +2182,7 @@ li {
                         })}
                         style={{
                           width: '100%',
+                          maxWidth: '100%',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2204,6 +2226,7 @@ li {
                         })}
                         style={{
                           width: '100%',
+                          maxWidth: '100%',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2224,6 +2247,7 @@ li {
                         })}
                         style={{
                           width: '100%',
+                          maxWidth: '100%',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2307,6 +2331,7 @@ li {
                       placeholder="e.g., Hero Image Position"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2326,6 +2351,7 @@ li {
                       placeholder="e.g., .TourPage-Gallery"
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2346,6 +2372,7 @@ li {
                       rows={4}
                       style={{
                         width: '100%',
+                          maxWidth: '100%',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
