@@ -11,6 +11,9 @@ const CSSCustomizer = () => {
       id: 1,
       name: 'SweetSans',
       type: 'custom',
+      typekitUrl: '',
+      typekitFamilies: [], // Array of font family names from a single Typekit CSS
+      googleLink: '',
       files: [
         { url: 'https://external-stylesheets.s3.us-east-1.amazonaws.com/fonts/sirdavis/SweetSans-Regular.otf', weight: 'normal', style: 'normal' },
         { url: 'https://external-stylesheets.s3.us-east-1.amazonaws.com/fonts/sirdavis/SweetSans-Bold.otf', weight: 'bold', style: 'normal' }
@@ -59,17 +62,21 @@ const CSSCustomizer = () => {
 
   // Typography State
   const [typography, setTypography] = useState({
+    enableFonts: true,
     bodyFont: 'SweetSans',
     bodyFallback: 'Arial',
     headingFont: 'SweetSans',
     headingFallback: 'Arial',
     buttonFont: 'SweetSans',
     buttonFallback: 'Arial',
-    bodySize: '14px',
-    h1Size: '36px',
-    h1LineHeight: '1',
-    h1SizeMobile: '20px',
-    textTransform: 'uppercase'
+    bodySize: '',
+    titleSize: '',
+    titleLineHeight: '',
+    titleSizeMobile: '',
+    subtitleSize: '',
+    subtitleSizeMobile: '',
+    textTransform: 'uppercase',
+    linkUnderline: false
   });
 
   // Fallback font options - simplified to just show font names
@@ -162,7 +169,8 @@ const CSSCustomizer = () => {
       backgroundColor: '#000000',
       textColor: 'var(--color-body)',
       borderColor: '#6e6e6e',
-      padding: '16px'
+      padding: '16px',
+      darkMode: false
     },
     lists: {
       backgroundColor: 'var(--color-background)',
@@ -188,6 +196,25 @@ const CSSCustomizer = () => {
     }
   ]);
 
+  // Function to get all available font families (including individual Typekit families)
+  const getAllFontFamilies = () => {
+    const families = [];
+    fonts.forEach(font => {
+      if (font.type === 'typekit' && font.typekitFamilies && font.typekitFamilies.length > 0) {
+        // Add each Typekit family as a separate option
+        font.typekitFamilies.forEach(family => {
+          if (family.trim()) {
+            families.push({ value: family, label: family, sourceFont: font });
+          }
+        });
+      } else if (font.name) {
+        // Add regular fonts (custom/google) or typekit without families specified
+        families.push({ value: font.name, label: font.name, sourceFont: font });
+      }
+    });
+    return families;
+  };
+
   // Add new font
   const addFont = () => {
     setFonts([...fonts, {
@@ -196,6 +223,7 @@ const CSSCustomizer = () => {
       type: 'google',
       googleLink: '',
       typekitUrl: '',
+      typekitFamilies: [],
       files: [{ url: '', weight: 'normal', style: 'normal' }]
     }]);
   };
@@ -284,32 +312,32 @@ const CSSCustomizer = () => {
   const generateCSS = () => {
     let css = '';
 
-    // Font Faces - Typekit ALWAYS first, then Google, then Custom
-    
-    // 1. Adobe Typekit fonts first
-    fonts.forEach(font => {
-      if (font.type === 'typekit' && font.typekitUrl) {
-        css += `@import url("${font.typekitUrl}");
+    // Font Faces - Typekit ALWAYS first, then Google, then Custom (only if fonts enabled)
+    if (typography.enableFonts) {
+      // 1. Adobe Typekit fonts first
+      fonts.forEach(font => {
+        if (font.type === 'typekit' && font.typekitUrl) {
+          css += `@import url("${font.typekitUrl}");
 
 `;
-      }
-    });
+        }
+      });
 
-    // 2. Google Fonts second
-    fonts.forEach(font => {
-      if (font.type === 'google' && font.googleLink) {
-        css += `@import url('${font.googleLink}');
+      // 2. Google Fonts second
+      fonts.forEach(font => {
+        if (font.type === 'google' && font.googleLink) {
+          css += `@import url('${font.googleLink}');
 
 `;
-      }
-    });
+        }
+      });
 
-    // 3. Custom fonts last
-    fonts.forEach(font => {
-      if (font.type === 'custom' && font.files.length > 0) {
-        font.files.forEach(file => {
-          if (file.url) {
-            css += `@font-face {
+      // 3. Custom fonts last
+      fonts.forEach(font => {
+        if (font.type === 'custom' && font.files.length > 0) {
+          font.files.forEach(file => {
+            if (file.url) {
+              css += `@font-face {
   font-family: '${font.name}';
   src: url('${file.url}') format('opentype');
   font-weight: ${file.weight};
@@ -318,10 +346,11 @@ const CSSCustomizer = () => {
 }
 
 `;
-          }
-        });
-      }
-    });
+            }
+          });
+        }
+      });
+    }
 
     // CSS Variables
     css += `/* Variables */
@@ -331,10 +360,10 @@ const CSSCustomizer = () => {
   --color-button: ${colors.button};
   --color-hover: ${colors.hover};
   --color-brand: ${colors.brand};
-  --color-background: ${colors.background};
+  --color-background: ${colors.background};${typography.enableFonts ? `
   --font-body: ${buildFontStack(typography.bodyFont, typography.bodyFallback)};
   --font-heading: ${buildFontStack(typography.headingFont, typography.headingFallback)};
-  --font-button: ${buildFontStack(typography.buttonFont, typography.buttonFallback)};
+  --font-button: ${buildFontStack(typography.buttonFont, typography.buttonFallback)};` : ''}
   --transition: ${elementStyles.buttons.transition};
   --text-transform: ${typography.textTransform};
 }
@@ -343,7 +372,7 @@ const CSSCustomizer = () => {
 
     // Dark Theme Styles
     if (isDarkTheme) {
-      css += `/* Enable transparent plugin elements for dark mode */
+      css += `/* enable transparent plugin elements for dark mode */
 #iframe_wrapper {
   background: var(--color-background) !important;
 }
@@ -364,33 +393,76 @@ const CSSCustomizer = () => {
   background: transparent;
 }
 
+.multi-select-wrapper .ui.multi-select-options {
+  background-color: transparent;
+}
+
+.CheckoutSummary-ContentBox.Subtotal-PriceBreakdown .CheckoutSummary-PriceBreakDown {
+  background: transparent;
+}
+
+.CheckoutSummary .item-subtitle {
+  color: var(--color-body);
+}
+
+.CheckoutNavigationController .multi-select-wrapper .ui.multi-select-dropdown .text {
+  color: #333333;
+}
+
+.TourPage-BookingDetails .BookingRequest-form .multi-select-wrapper .ui.multi-select-dropdown {
+  color: #333333;
+}
+
+.CheckoutSummary {
+  color: var(--color-body) !important;
+}
+
+.ConfirmationDefault .ui.grid.Confirmation-grid .column.ConfirmationDefault-Column.right {
+  background: transparent !important;
+}
+
+.css-1mji04y, .css-1mji04y {
+  /* cancelation policy on checkout and confirmation summary */
+  color: var(--color-body) !important;
+}
+
+@media screen and (max-width: 767px) {
+  .CheckoutSummary {
+    background: transparent;
+  }
+}
+
 `;
     }
 
     // Base Typography
     css += `/* Typography */
 body {
-  color: var(--color-body) !important;
-  font-family: var(--font-body) !important;
+  color: var(--color-body) !important;${typography.enableFonts ? `
+  font-family: var(--font-body) !important;` : ''}
   font-weight: normal !important;
   font-style: normal;
-  background: var(--color-background);
-  font-size: ${typography.bodySize} !important;
+  background: var(--color-background);${typography.bodySize ? `
+  font-size: ${typography.bodySize} !important;` : ''}
 }
 
-h1, h2, h3, h4, h5, h6, .infoPanel .tourName {
-  font-family: var(--font-heading) !important;
+h1, h2, h3, h4, h5, h6, .infoPanel .tourName {${typography.enableFonts ? `
+  font-family: var(--font-heading) !important;` : ''}
   font-weight: bold !important;
   color: var(--color-heading) !important;
   text-transform: var(--text-transform) !important;
 }
 
-.tour-title, .TourPage-About-title {
-  font-size: ${typography.h1Size} !important;
-  line-height: ${typography.h1LineHeight} !important;
+${typography.titleSize || typography.titleLineHeight ? `.tour-title, .TourPage-About-title {${typography.titleSize ? `
+  font-size: ${typography.titleSize} !important;` : ''}${typography.titleLineHeight ? `
+  line-height: ${typography.titleLineHeight} !important;` : ''}
 }
 
-`;
+` : ''}${typography.subtitleSize ? `.tour-tagline, .TourPage-About-tagline {
+  font-size: ${typography.subtitleSize} !important;
+}
+
+` : ''}`;
 
     // Title color override
     if (colors.titleOverride) {
@@ -410,13 +482,22 @@ h1, h2, h3, h4, h5, h6, .infoPanel .tourName {
 `;
     }
 
+    // Link underline
+    if (typography.linkUnderline) {
+      css += `.TourPage-About-description a, .contains-brand-link a {
+  text-decoration: underline !important;
+}
+
+`;
+    }
+
     // Buttons
     css += `/* Buttons */
 .button, .ui.anygreen.button, .TourPage-ContactGuide-submit-button.ui.large.button,
 #request-booking-mobile .ui.button, .ConfirmationContainer .ButtonContainer .ui.button,
 .CheckoutNavigationController button.BookingRequest-submit, [data-testid="update-email-btn"],
-.rescheduleModal .modalActions .submitButton, .contactModal .modalActions .submitButton, .ConfirmationDefault .GoGAdditionalInfoButton, [data-testid="apply-filter"] {
-  font-family: var(--font-button) !important;
+.rescheduleModal .modalActions .submitButton, .contactModal .modalActions .submitButton, .ConfirmationDefault .GoGAdditionalInfoButton, [data-testid="apply-filter"] {${typography.enableFonts ? `
+  font-family: var(--font-button) !important;` : ''}
   font-weight: normal !important;
   color: ${elementStyles.buttons.primaryColor} !important;
   background: ${elementStyles.buttons.primaryBg} !important;
@@ -436,8 +517,8 @@ h1, h2, h3, h4, h5, h6, .infoPanel .tourName {
 .ui.basic.button, .DiscountCodeContainer .DiscountCode-Input .ui.button,
 [data-testid="dont-cancel-btn"], .ModifyBooking .ModifyBooking-Column.left .actionButtons .rescheduleButton,
 .ModifyBooking .ModifyBooking-Column.left .actionButtons .contactButton,
-.TourPage-ContactGuide-link.ui.basic.button {
-  font-family: var(--font-button) !important;
+.TourPage-ContactGuide-link.ui.basic.button {${typography.enableFonts ? `
+  font-family: var(--font-button) !important;` : ''}
   font-weight: normal !important;
   color: ${elementStyles.buttons.secondaryColor} !important;
   background: ${elementStyles.buttons.secondaryBg} !important;
@@ -482,6 +563,28 @@ input[type='text'], input[type='email'], input[type='search'], input[type='passw
 
 `;
 
+    // Modal Dark Mode
+    if (elementStyles.modals.darkMode) {
+      css += `/* Modal Dark Mode */
+[data-testid="modal-main-overlay"] {
+  background: var(--color-background) !important;
+}
+
+.Confirmation-MessageGuide-Content {
+  background: var(--color-background) !important;
+}
+
+.css-lrd4iz {
+  /* update email address modal field label */
+  color: var(--color-body) !important;
+}
+
+.ui.modal > .content {
+  background: var(--color-background);
+}
+
+`;
+    }
     // Lists
     css += `/* Lists */
 li {
@@ -494,14 +597,20 @@ li {
 `;
 
     // Mobile Styles
-    css += `/* Mobile Styles */
-@media (max-width: 600px) {
+    if (typography.titleSizeMobile || typography.subtitleSizeMobile) {
+      css += `/* Mobile Styles */
+@media (max-width: 600px) {${typography.titleSizeMobile ? `
   .tour-title, .TourPage-About-title {
-    font-size: ${typography.h1SizeMobile} !important;
+    font-size: ${typography.titleSizeMobile} !important;
   }
-}
+` : ''}${typography.subtitleSizeMobile ? `
+  .tour-tagline, .TourPage-About-tagline {
+    font-size: ${typography.subtitleSizeMobile} !important;
+  }
+` : ''}}
 
 `;
+    }
 
     // Custom Snippets
     if (customSnippets.length > 0) {
@@ -547,8 +656,7 @@ li {
     { id: 'inputs', label: 'Input Fields', icon: '📋' },
     { id: 'modals', label: 'Modals', icon: '🪟' },
     { id: 'lists', label: 'Lists', icon: '📄' },
-    { id: 'custom', label: 'Custom CSS', icon: '⚙️' },
-    { id: 'preview', label: 'Preview & Export', icon: '👁️' }
+    { id: 'custom', label: 'Custom CSS', icon: '⚙️' }
   ];
 
   return (
@@ -559,12 +667,15 @@ li {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
     }}>
       <div style={{
-        maxWidth: '1400px',
+        maxWidth: '1800px',
         margin: '0 auto',
         background: 'white',
         borderRadius: '16px',
         boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        height: 'calc(100vh - 64px)'
       }}>
         {/* Header */}
         <div style={{
@@ -616,36 +727,124 @@ li {
           ))}
         </div>
 
-        {/* Content */}
-        <div style={{ padding: '32px' }}>
+        {/* Split Screen Content */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Left Panel - Settings */}
+          <div style={{ 
+            flex: '0 0 55%', 
+            overflowY: 'auto', 
+            padding: '32px',
+            borderRight: '2px solid #f0f0f0'
+          }}>
           {/* Fonts Section */}
           {activeSection === 'fonts' && (
             <div>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                marginBottom: '24px'
+              <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Font Management</h2>
+
+              {/* Prominent Font Toggle Card */}
+              <div style={{
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '24px',
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
               }}>
-                <h2 style={{ margin: 0, fontSize: '24px', color: '#333' }}>Font Management</h2>
-                <button
-                  onClick={addFont}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#667eea',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontWeight: '600'
-                  }}
-                >
-                  <Plus size={16} /> Add Font
-                </button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '20px', color: 'white', fontWeight: '600' }}>
+                      Enable Custom Fonts
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: 'rgba(255,255,255,0.9)', lineHeight: '1.5' }}>
+                      Turn this on to manage custom fonts. When off, no font-family declarations will be included in your CSS.
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginLeft: '24px' }}>
+                    <div onClick={() => setTypography({ 
+                      ...typography, 
+                      enableFonts: !typography.enableFonts 
+                    })}
+                      style={{ 
+                        width: '60px', 
+                        height: '32px', 
+                        background: typography.enableFonts ? '#22c55e' : 'rgba(255,255,255,0.3)',
+                        borderRadius: '16px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s',
+                        border: '2px solid rgba(255,255,255,0.5)'
+                      }}>
+                      <div style={{ 
+                        width: '24px', 
+                        height: '24px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '2px', 
+                        left: typography.enableFonts ? '32px' : '2px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)' 
+                      }} />
+                    </div>
+                    <span style={{ 
+                      fontSize: '18px', 
+                      color: 'white', 
+                      fontWeight: '700',
+                      minWidth: '40px'
+                    }}>
+                      {typography.enableFonts ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              {!typography.enableFonts && (
+                <div style={{ 
+                  background: '#fee2e2', 
+                  border: '2px solid #ef4444', 
+                  borderRadius: '12px', 
+                  padding: '20px',
+                  marginBottom: '24px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '48px', marginBottom: '12px' }}>🚫</div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#991b1b', fontWeight: '600' }}>
+                    Font Management Disabled
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '14px', color: '#991b1b', lineHeight: '1.6' }}>
+                    Enable custom fonts above to manage font families. Font fields will also be hidden in the Typography section.
+                  </p>
+                </div>
+              )}
+
+              {typography.enableFonts && (
+                <>
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center',
+                    marginBottom: '24px'
+                  }}>
+                    <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>
+                      Configure your custom fonts, Google Fonts, or Adobe Typekit
+                    </p>
+                    <button
+                      onClick={addFont}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#667eea',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      <Plus size={16} /> Add Font
+                    </button>
+                  </div>
 
               {fonts.map((font, fontIndex) => (
                 <div key={font.id} style={{
@@ -686,7 +885,8 @@ li {
                       onChange={(e) => updateFont(font.id, 'type', e.target.value)}
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -711,8 +911,9 @@ li {
                           onChange={(e) => updateFont(font.id, 'googleLink', e.target.value)}
                           placeholder="Paste the full Google Fonts link, e.g., https://fonts.googleapis.com/css2?family=Chakra+Petch..."
                           style={{
-                            width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -763,8 +964,9 @@ li {
                           onChange={(e) => updateFont(font.id, 'typekitUrl', e.target.value)}
                           placeholder="e.g., https://use.typekit.net/mch3imj.css"
                           style={{
-                            width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -784,50 +986,144 @@ li {
                         marginBottom: '16px'
                       }}>
                         <div style={{ fontWeight: '600', color: '#1565c0', marginBottom: '6px', fontSize: '13px' }}>
-                          ℹ️ Font Family Name Required
+                          ℹ️ Multiple Font Families
                         </div>
                         <div style={{ color: '#1565c0', fontSize: '12px', lineHeight: '1.5' }}>
-                          Enter the exact font family name below as specified in your Adobe Fonts project (e.g., "proxima-nova", "futura-pt").
+                          A single Typekit CSS file can contain multiple font families. Add each font family name below.
                         </div>
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                          <label style={{ fontWeight: '600', color: '#667eea', fontSize: '14px' }}>
+                            Font Family Names <span style={{ color: '#d32f2f' }}>*</span>
+                          </label>
+                          <button
+                            onClick={() => {
+                              const newFamilies = [...(font.typekitFamilies || []), ''];
+                              updateFont(font.id, 'typekitFamilies', newFamilies);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Plus size={14} /> Add Font
+                          </button>
+                        </div>
+
+                        {(!font.typekitFamilies || font.typekitFamilies.length === 0) && (
+                          <div style={{ 
+                            padding: '12px',
+                            background: '#f5f5f5',
+                            borderRadius: '6px',
+                            fontSize: '13px',
+                            color: '#666',
+                            fontStyle: 'italic',
+                            textAlign: 'center'
+                          }}>
+                            Click "Add Font" to add font families from your Typekit CSS (e.g., "civane-normal", "industry")
+                          </div>
+                        )}
+
+                        {font.typekitFamilies && font.typekitFamilies.map((family, idx) => (
+                          <div key={idx} style={{ marginBottom: '12px' }}>
+                            <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', fontWeight: '500', color: '#555' }}>
+                              Font Family {idx + 1}
+                            </label>
+                            <div style={{ 
+                              display: 'flex', 
+                              gap: '8px',
+                              alignItems: 'center'
+                            }}>
+                              <input
+                                type="text"
+                                value={family}
+                                onChange={(e) => {
+                                  const newFamilies = [...font.typekitFamilies];
+                                  newFamilies[idx] = e.target.value;
+                                  updateFont(font.id, 'typekitFamilies', newFamilies);
+                                }}
+                                placeholder="e.g., civane-normal"
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  boxSizing: 'border-box',
+                                  padding: '10px',
+                                  border: '2px solid #667eea',
+                                  borderRadius: '6px',
+                                  fontSize: '14px',
+                                  background: family.trim() ? '#e8f5e9' : 'white'
+                                }}
+                              />
+                              <button
+                                onClick={() => {
+                                  const newFamilies = font.typekitFamilies.filter((_, i) => i !== idx);
+                                  updateFont(font.id, 'typekitFamilies', newFamilies);
+                                }}
+                                style={{
+                                  padding: '10px',
+                                  background: '#ef5350',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
 
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ 
-                      display: 'block', 
-                      marginBottom: '8px', 
-                      fontWeight: '600', 
-                      color: (font.type === 'google' || font.type === 'typekit') ? '#667eea' : '#555'
-                    }}>
-                      Font Family Name {(font.type === 'google' || font.type === 'typekit') && <span style={{ color: '#d32f2f' }}>*</span>}
-                    </label>
-                    <input
-                      type="text"
-                      value={font.name}
-                      onChange={(e) => updateFont(font.id, 'name', e.target.value)}
-                      placeholder={font.type === 'google' ? 'e.g., Chakra Petch' : font.type === 'typekit' ? 'e.g., proxima-nova' : 'e.g., SweetSans'}
-                      style={{
-                        width: '100%',
-                          maxWidth: '100%',
-                        padding: '10px',
-                        border: (font.type === 'google' || font.type === 'typekit') ? '2px solid #667eea' : '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        background: (font.type === 'google' && font.googleLink && font.name) || (font.type === 'typekit' && font.typekitUrl && font.name) ? '#e8f5e9' : 'white'
-                      }}
-                    />
-                    {font.type === 'google' && (
-                      <small style={{ display: 'block', marginTop: '6px', color: '#667eea', fontSize: '11px', fontWeight: '500' }}>
-                        Must match Google's exact font family name
-                      </small>
-                    )}
-                    {font.type === 'typekit' && (
-                      <small style={{ display: 'block', marginTop: '6px', color: '#667eea', fontSize: '11px', fontWeight: '500' }}>
-                        Must match Adobe Typekit's exact font family name
-                      </small>
-                    )}
-                  </div>
+                  {/* Only show Font Family Name for Google and Custom fonts, NOT Typekit */}
+                  {font.type !== 'typekit' && (
+                    <div style={{ marginBottom: '16px' }}>
+                      <label style={{ 
+                        display: 'block', 
+                        marginBottom: '8px', 
+                        fontWeight: '600', 
+                        color: font.type === 'google' ? '#667eea' : '#555'
+                      }}>
+                        Font Family Name {font.type === 'google' && <span style={{ color: '#d32f2f' }}>*</span>}
+                      </label>
+                      <input
+                        type="text"
+                        value={font.name}
+                        onChange={(e) => updateFont(font.id, 'name', e.target.value)}
+                        placeholder={font.type === 'google' ? 'e.g., Chakra Petch' : 'e.g., SweetSans'}
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: font.type === 'google' ? '2px solid #667eea' : '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          background: (font.type === 'google' && font.googleLink && font.name) ? '#e8f5e9' : 'white'
+                        }}
+                      />
+                      {font.type === 'google' && (
+                        <small style={{ display: 'block', marginTop: '6px', color: '#667eea', fontSize: '11px', fontWeight: '500' }}>
+                          Must match Google's exact font family name
+                        </small>
+                      )}
+                    </div>
+                  )}
 
                   {font.type === 'custom' && (
                     <div>
@@ -896,8 +1192,9 @@ li {
                               onChange={(e) => updateFontFile(font.id, fileIndex, 'url', e.target.value)}
                               placeholder="https://example.com/font.otf"
                               style={{
-                                width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                                 padding: '8px',
                                 border: '1px solid #ddd',
                                 borderRadius: '4px',
@@ -915,8 +1212,9 @@ li {
                                 value={file.weight}
                                 onChange={(e) => updateFontFile(font.id, fileIndex, 'weight', e.target.value)}
                                 style={{
-                                  width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                                   padding: '8px',
                                   border: '1px solid #ddd',
                                   borderRadius: '4px',
@@ -943,8 +1241,9 @@ li {
                                 value={file.style}
                                 onChange={(e) => updateFontFile(font.id, fileIndex, 'style', e.target.value)}
                                 style={{
-                                  width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                                   padding: '8px',
                                   border: '1px solid #ddd',
                                   borderRadius: '4px',
@@ -962,6 +1261,8 @@ li {
                   )}
                 </div>
               ))}
+              </>
+              )}
             </div>
           )}
 
@@ -1099,6 +1400,7 @@ li {
                         onChange={(e) => setColors({ ...colors, body: e.target.value })}
                         style={{
                           flex: 1,
+                         minWidth: 0,
                           minWidth: 0,
                           padding: '10px',
                           border: '1px solid #ddd',
@@ -1152,6 +1454,7 @@ li {
                         onChange={(e) => setColors({ ...colors, heading: e.target.value })}
                         style={{
                           flex: 1,
+                         minWidth: 0,
                           minWidth: 0,
                           padding: '10px',
                           border: '1px solid #ddd',
@@ -1213,6 +1516,7 @@ li {
                           onChange={(e) => setColors({ ...colors, [key]: e.target.value })}
                           style={{
                             flex: 1,
+                           minWidth: 0,
                             minWidth: 0,
                             padding: '10px',
                             border: '1px solid #ddd',
@@ -1340,6 +1644,7 @@ li {
                         placeholder="Leave empty to use heading color"
                         style={{
                           flex: 1,
+                         minWidth: 0,
                           minWidth: 0,
                           padding: '10px',
                           border: '1px solid #ddd',
@@ -1416,6 +1721,7 @@ li {
                         placeholder="Leave empty to use heading color"
                         style={{
                           flex: 1,
+                         minWidth: 0,
                           minWidth: 0,
                           padding: '10px',
                           border: '1px solid #ddd',
@@ -1457,90 +1763,311 @@ li {
           {activeSection === 'typography' && (
             <div>
               <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Typography Settings</h2>
+
+              {!typography.enableFonts && (
+                <div style={{ 
+                  background: '#fef3c7', 
+                  border: '2px solid #f59e0b', 
+                  borderRadius: '12px', 
+                  padding: '20px',
+                  marginBottom: '24px',
+                  textAlign: 'center'
+                }}>
+                  <div style={{ fontSize: '36px', marginBottom: '8px' }}>ℹ️</div>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', color: '#92400e', fontWeight: '600' }}>
+                    Custom Fonts Disabled
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#92400e', lineHeight: '1.5' }}>
+                    Font family and fallback font fields are hidden. Enable fonts in the Fonts section to manage font families.
+                  </p>
+                </div>
+              )}
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Body Text</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Headings</h3>
                   
+                  {typography.enableFonts && (
+                    <>
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Font Family
+                        </label>
+                        <select
+                          value={typography.headingFont}
+                          onChange={(e) => setTypography({ ...typography, headingFont: e.target.value })}
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          {getAllFontFamilies().map(family => (
+                            <option key={family.value} value={family.value}>{family.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Fallback Font
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                          <select
+                            value={typography.headingFallback}
+                            onChange={(e) => setTypography({ ...typography, headingFallback: e.target.value })}
+                            style={{
+                              flex: 1,
+                             minWidth: 0,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '1px solid #ddd',
+                              borderRadius: '6px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            <optgroup label="Sans-serif Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Serif Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Monospace Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Generic Families">
+                              {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                          <button
+                            onClick={() => setTypography({ ...typography, headingFallback: suggestFallback(typography.headingFont) })}
+                            style={{
+                              padding: '10px 16px',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Auto-suggest based on font name"
+                          >
+                            Auto
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Font Family
+                      Title Size (Desktop)
                     </label>
-                    <select
-                      value={typography.bodyFont}
-                      onChange={(e) => setTypography({ ...typography, bodyFont: e.target.value })}
+                    <input
+                      type="text"
+                      value={typography.titleSize}
+                      onChange={(e) => setTypography({ ...typography, titleSize: e.target.value })}
+                      placeholder="36px"
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         fontSize: '14px'
                       }}
-                    >
-                      {fonts.map(font => (
-                        <option key={font.id} value={font.name}>{font.name}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
 
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Fallback Font
+                      Title Size (Mobile)
                     </label>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
-                      <select
-                        value={typography.bodyFallback}
-                        onChange={(e) => setTypography({ ...typography, bodyFallback: e.target.value })}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        <optgroup label="Sans-serif Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Serif Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Monospace Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Generic Families">
-                          {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                      <button
-                        onClick={() => setTypography({ ...typography, bodyFallback: suggestFallback(typography.bodyFont) })}
-                        style={{
-                          padding: '10px 16px',
-                          background: '#667eea',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title="Auto-suggest based on font name"
-                      >
-                        Auto
-                      </button>
-                    </div>
+                    <input
+                      type="text"
+                      value={typography.titleSizeMobile}
+                      onChange={(e) => setTypography({ ...typography, titleSizeMobile: e.target.value })}
+                      placeholder="20px"
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
                   </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Line Height
+                    </label>
+                    <input
+                      type="text"
+                      value={typography.titleLineHeight}
+                      onChange={(e) => setTypography({ ...typography, titleLineHeight: e.target.value })}
+                      placeholder="1"
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Subtitle Size (Desktop)
+                    </label>
+                    <input
+                      type="text"
+                      value={typography.subtitleSize}
+                      onChange={(e) => setTypography({ ...typography, subtitleSize: e.target.value })}
+                      placeholder="18px"
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Subtitle Size (Mobile)
+                    </label>
+                    <input
+                      type="text"
+                      value={typography.subtitleSizeMobile}
+                      onChange={(e) => setTypography({ ...typography, subtitleSizeMobile: e.target.value })}
+                      placeholder="14px"
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Body Text</h3>
+                  
+                  {typography.enableFonts && (
+                    <>
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Font Family
+                        </label>
+                        <select
+                          value={typography.bodyFont}
+                          onChange={(e) => setTypography({ ...typography, bodyFont: e.target.value })}
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          {getAllFontFamilies().map(family => (
+                            <option key={family.value} value={family.value}>{family.label}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Fallback Font
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                          <select
+                            value={typography.bodyFallback}
+                            onChange={(e) => setTypography({ ...typography, bodyFallback: e.target.value })}
+                            style={{
+                              flex: 1,
+                             minWidth: 0,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '1px solid #ddd',
+                              borderRadius: '6px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            <optgroup label="Sans-serif Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Serif Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Monospace Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Generic Families">
+                              {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                          <button
+                            onClick={() => setTypography({ ...typography, bodyFallback: suggestFallback(typography.bodyFont) })}
+                            style={{
+                              padding: '10px 16px',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Auto-suggest based on font name"
+                          >
+                            Auto
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
@@ -1553,7 +2080,8 @@ li {
                       placeholder="14px"
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1563,232 +2091,95 @@ li {
                   </div>
                 </div>
 
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Headings</h3>
-                  
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Font Family
-                    </label>
-                    <select
-                      value={typography.headingFont}
-                      onChange={(e) => setTypography({ ...typography, headingFont: e.target.value })}
-                      style={{
-                        width: '100%',
-                          maxWidth: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    >
-                      {fonts.map(font => (
-                        <option key={font.id} value={font.name}>{font.name}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Fallback Font
-                    </label>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
-                      <select
-                        value={typography.headingFallback}
-                        onChange={(e) => setTypography({ ...typography, headingFallback: e.target.value })}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        <optgroup label="Sans-serif Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Serif Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Monospace Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Generic Families">
-                          {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                      <button
-                        onClick={() => setTypography({ ...typography, headingFallback: suggestFallback(typography.headingFont) })}
-                        style={{
-                          padding: '10px 16px',
-                          background: '#667eea',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title="Auto-suggest based on font name"
-                      >
-                        Auto
-                      </button>
-                    </div>
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      H1 Size (Desktop)
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.h1Size}
-                      onChange={(e) => setTypography({ ...typography, h1Size: e.target.value })}
-                      placeholder="36px"
-                      style={{
-                        width: '100%',
-                          maxWidth: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      H1 Size (Mobile)
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.h1SizeMobile}
-                      onChange={(e) => setTypography({ ...typography, h1SizeMobile: e.target.value })}
-                      placeholder="20px"
-                      style={{
-                        width: '100%',
-                          maxWidth: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Line Height
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.h1LineHeight}
-                      onChange={(e) => setTypography({ ...typography, h1LineHeight: e.target.value })}
-                      placeholder="1"
-                      style={{
-                        width: '100%',
-                          maxWidth: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    />
-                  </div>
-                </div>
 
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                   <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Buttons</h3>
                   
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Font Family
-                    </label>
-                    <select
-                      value={typography.buttonFont}
-                      onChange={(e) => setTypography({ ...typography, buttonFont: e.target.value })}
-                      style={{
-                        width: '100%',
-                          maxWidth: '100%',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px'
-                      }}
-                    >
-                      {fonts.map(font => (
-                        <option key={font.id} value={font.name}>{font.name}</option>
-                      ))}
-                    </select>
-                  </div>
+                  {typography.enableFonts && (
+                    <>
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Font Family
+                        </label>
+                        <select
+                          value={typography.buttonFont}
+                          onChange={(e) => setTypography({ ...typography, buttonFont: e.target.value })}
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          {getAllFontFamilies().map(family => (
+                            <option key={family.value} value={family.value}>{family.label}</option>
+                          ))}
+                        </select>
+                      </div>
 
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Fallback Font
-                    </label>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
-                      <select
-                        value={typography.buttonFallback}
-                        onChange={(e) => setTypography({ ...typography, buttonFallback: e.target.value })}
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        <optgroup label="Sans-serif Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Serif Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Monospace Fonts">
-                          {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                        <optgroup label="Generic Families">
-                          {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
-                            <option key={option.value} value={option.value}>{option.label}</option>
-                          ))}
-                        </optgroup>
-                      </select>
-                      <button
-                        onClick={() => setTypography({ ...typography, buttonFallback: suggestFallback(typography.buttonFont) })}
-                        style={{
-                          padding: '10px 16px',
-                          background: '#667eea',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          whiteSpace: 'nowrap'
-                        }}
-                        title="Auto-suggest based on font name"
-                      >
-                        Auto
-                      </button>
-                    </div>
-                  </div>
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Fallback Font
+                        </label>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                          <select
+                            value={typography.buttonFallback}
+                            onChange={(e) => setTypography({ ...typography, buttonFallback: e.target.value })}
+                            style={{
+                              flex: 1,
+                             minWidth: 0,
+                              minWidth: 0,
+                              padding: '10px',
+                              border: '1px solid #ddd',
+                              borderRadius: '6px',
+                              fontSize: '14px'
+                            }}
+                          >
+                            <optgroup label="Sans-serif Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Serif Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Monospace Fonts">
+                              {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                            <optgroup label="Generic Families">
+                              {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
+                                <option key={option.value} value={option.value}>{option.label}</option>
+                              ))}
+                            </optgroup>
+                          </select>
+                          <button
+                            onClick={() => setTypography({ ...typography, buttonFallback: suggestFallback(typography.buttonFont) })}
+                            style={{
+                              padding: '10px 16px',
+                              background: '#667eea',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              whiteSpace: 'nowrap'
+                            }}
+                            title="Auto-suggest based on font name"
+                          >
+                            Auto
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
@@ -1799,7 +2190,8 @@ li {
                       onChange={(e) => setTypography({ ...typography, textTransform: e.target.value })}
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1813,6 +2205,29 @@ li {
                     </select>
                   </div>
               </div>
+
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Links</h3>
+                  
+                  <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600', color: '#555' }}>
+                      <input
+                        type="checkbox"
+                        checked={typography.linkUnderline}
+                        onChange={(e) => setTypography({ ...typography, linkUnderline: e.target.checked })}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer'
+                        }}
+                      />
+                      Link Underline
+                    </label>
+                    <small style={{ display: 'block', marginTop: '8px', color: '#777', fontSize: '12px' }}>
+                      Applies to links in tour descriptions and brand links
+                    </small>
+                  </div>
+                </div>
                 </div>
             </div>
           )}
@@ -1862,6 +2277,7 @@ li {
                             })}
                             style={{
                               flex: 1,
+                              minWidth: 0,
                               padding: '10px',
                               border: '1px solid #ddd',
                               borderRadius: '6px',
@@ -1878,8 +2294,9 @@ li {
                             buttons: { ...elementStyles.buttons, [field.key]: e.target.value }
                           })}
                           style={{
-                            width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -1928,6 +2345,7 @@ li {
                             })}
                             style={{
                               flex: 1,
+                              minWidth: 0,
                               padding: '10px',
                               border: '1px solid #ddd',
                               borderRadius: '6px',
@@ -1944,8 +2362,9 @@ li {
                             buttons: { ...elementStyles.buttons, [field.key]: e.target.value }
                           })}
                           style={{
-                            width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -1974,7 +2393,8 @@ li {
                       placeholder="0px"
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -1997,7 +2417,8 @@ li {
                       placeholder="1px solid var(--color-button)"
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2018,7 +2439,8 @@ li {
                       })}
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2087,6 +2509,7 @@ li {
                           })}
                           style={{
                             flex: 1,
+                            minWidth: 0,
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -2103,8 +2526,9 @@ li {
                           inputs: { ...elementStyles.inputs, [field.key]: e.target.value }
                         })}
                         style={{
-                          width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2121,7 +2545,39 @@ li {
           {/* Modals Section */}
           {activeSection === 'modals' && (
             <div>
-              <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Modal Styles</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                <h2 style={{ margin: 0, fontSize: '24px', color: '#333' }}>Modal Styles</h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <label style={{ fontWeight: '600', cursor: 'pointer' }}>Modal Dark Mode</label>
+                  <div onClick={() => setElementStyles({ 
+                    ...elementStyles, 
+                    modals: { ...elementStyles.modals, darkMode: !elementStyles.modals.darkMode }
+                  })}
+                    style={{ width: '50px', height: '28px', background: elementStyles.modals.darkMode ? '#9333ea' : '#ddd',
+                      borderRadius: '14px', position: 'relative', cursor: 'pointer', transition: 'background 0.3s' }}>
+                    <div style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%',
+                      position: 'absolute', top: '4px', left: elementStyles.modals.darkMode ? '26px' : '4px',
+                      transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+                  </div>
+                  <span style={{ fontSize: '14px', color: '#666', fontWeight: '500' }}>
+                    {elementStyles.modals.darkMode ? 'On' : 'Off'}
+                  </span>
+                </div>
+              </div>
+
+              {elementStyles.modals.darkMode && (
+                <div style={{ 
+                  background: '#fef3c7', 
+                  border: '1px solid #f59e0b', 
+                  borderRadius: '8px', 
+                  padding: '12px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
+                  color: '#92400e'
+                }}>
+                  <strong>ℹ️ Modal Dark Mode Enabled</strong> - Modals will use background color variable
+                </div>
+              )}
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 {[
@@ -2165,6 +2621,7 @@ li {
                           })}
                           style={{
                             flex: 1,
+                            minWidth: 0,
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -2181,8 +2638,9 @@ li {
                           modals: { ...elementStyles.modals, [field.key]: e.target.value }
                         })}
                         style={{
-                          width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2225,8 +2683,9 @@ li {
                           lists: { ...elementStyles.lists, [field.key]: e.target.value }
                         })}
                         style={{
-                          width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2246,8 +2705,9 @@ li {
                           lists: { ...elementStyles.lists, [field.key]: e.target.value }
                         })}
                         style={{
-                          width: '100%',
-                          maxWidth: '100%',
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
@@ -2331,7 +2791,8 @@ li {
                       placeholder="e.g., Hero Image Position"
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2351,7 +2812,8 @@ li {
                       placeholder="e.g., .TourPage-Gallery"
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2372,7 +2834,8 @@ li {
                       rows={4}
                       style={{
                         width: '100%',
-                          maxWidth: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -2401,20 +2864,32 @@ li {
           )}
 
           {/* Preview & Export Section */}
-          {activeSection === 'preview' && (
-            <div>
-              <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Preview & Export</h2>
+          </div>
+
+          {/* Right Panel - Preview & Export (Always Visible) */}
+          <div style={{ 
+            flex: '0 0 45%', 
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#f9fafb'
+          }}>
+            {/* Sticky Header */}
+            <div style={{
+              padding: '24px',
+              borderBottom: '2px solid #e5e7eb',
+              background: 'white'
+            }}>
+              <h2 style={{ margin: '0 0 16px 0', fontSize: '24px', color: '#333' }}>Preview & Export</h2>
               
               <div style={{ 
                 display: 'flex', 
-                gap: '12px', 
-                marginBottom: '24px',
+                gap: '12px',
                 flexWrap: 'wrap'
               }}>
                 <button
                   onClick={exportCSS}
                   style={{
-                    padding: '12px 24px',
+                    padding: '10px 20px',
                     background: '#667eea',
                     color: 'white',
                     border: 'none',
@@ -2424,16 +2899,16 @@ li {
                     alignItems: 'center',
                     gap: '8px',
                     fontWeight: '600',
-                    fontSize: '16px'
+                    fontSize: '14px'
                   }}
                 >
-                  <Download size={18} /> Download CSS File
+                  <Download size={16} /> Download CSS
                 </button>
 
                 <button
                   onClick={copyCSS}
                   style={{
-                    padding: '12px 24px',
+                    padding: '10px 20px',
                     background: copied ? '#22c55e' : '#764ba2',
                     color: 'white',
                     border: 'none',
@@ -2443,32 +2918,38 @@ li {
                     alignItems: 'center',
                     gap: '8px',
                     fontWeight: '600',
-                    fontSize: '16px',
+                    fontSize: '14px',
                     transition: 'background 0.2s'
                   }}
                 >
-                  {copied ? <Check size={18} /> : <Copy size={18} />}
-                  {copied ? 'Copied!' : 'Copy to Clipboard'}
+                  {copied ? <Check size={16} /> : <Copy size={16} />}
+                  {copied ? 'Copied!' : 'Copy'}
                 </button>
               </div>
+            </div>
 
+            {/* Scrollable CSS Preview */}
+            <div style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: '24px'
+            }}>
               <div style={{
                 background: '#1e1e1e',
                 color: '#d4d4d4',
-                padding: '24px',
+                padding: '20px',
                 borderRadius: '12px',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontFamily: 'Monaco, Consolas, monospace',
-                maxHeight: '600px',
-                overflow: 'auto',
-                border: '1px solid #333'
+                border: '1px solid #333',
+                minHeight: '100%'
               }}>
                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
                   {generateCSS()}
                 </pre>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>
