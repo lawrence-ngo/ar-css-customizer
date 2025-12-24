@@ -243,7 +243,13 @@ const CSSCustomizer = () => {
       secondaryHoverBorderStyle: 'solid',
       secondaryHoverBorderColor: 'button', // references colors.button
       primaryTransition: 'none',
-      secondaryTransition: 'none'
+      secondaryTransition: 'none',
+      // Mobile Experience List Button
+      mobileListButtonWidth: '',
+      mobileListButtonMarginTop: '',
+      mobileListButtonMarginLeft: '',
+      mobileListButtonHeight: '',
+      mobileListButtonPaddingTop: ''
     },
     inputs: {
       backgroundColor: '',
@@ -268,6 +274,9 @@ const CSSCustomizer = () => {
       borderWidth: '',
       borderStyle: 'solid',
       borderColor: ''
+    },
+    atAGlance: {
+      zebraStripingColor: ''
     }
   });
 
@@ -275,7 +284,8 @@ const CSSCustomizer = () => {
   const [advancedCSS, setAdvancedCSS] = useState({
     pluginMarginFix: true,
     autoExpandDescription: false,
-    contactGuideAlignment: true
+    contactGuideAlignment: true,
+    mobileCheckoutTitleColor: true
   });
 
   // Custom CSS snippets
@@ -514,6 +524,32 @@ const CSSCustomizer = () => {
           setTypography(prev => ({
             ...prev,
             subtitleSizeMobile: subtitleSizeMobile[1].trim()
+          }));
+          importedCount++;
+        }
+      }
+
+      // Parse mobile Experience List button
+      const mobileListButtonMatch = normalizedCSS.match(/@media\s*\(max-width:\s*600px\)[^{]*\{[^}]*\.book-tour-btn[^{]*\{([^}]+)\}/);
+      if (mobileListButtonMatch) {
+        const mobileButtonContent = mobileListButtonMatch[1];
+        const width = mobileButtonContent.match(/width:\s*([^;!]+)/);
+        const marginTop = mobileButtonContent.match(/margin-top:\s*([^;!]+)/);
+        const marginLeft = mobileButtonContent.match(/margin-left:\s*([^;!]+)/);
+        const height = mobileButtonContent.match(/height:\s*([^;!]+)/);
+        const paddingTop = mobileButtonContent.match(/padding-top:\s*([^;!]+)/);
+        
+        const updates = {};
+        if (width) updates.mobileListButtonWidth = width[1].trim();
+        if (marginTop) updates.mobileListButtonMarginTop = marginTop[1].trim();
+        if (marginLeft) updates.mobileListButtonMarginLeft = marginLeft[1].trim();
+        if (height) updates.mobileListButtonHeight = height[1].trim();
+        if (paddingTop) updates.mobileListButtonPaddingTop = paddingTop[1].trim();
+        
+        if (Object.keys(updates).length > 0) {
+          setElementStyles(prev => ({
+            ...prev,
+            buttons: { ...prev.buttons, ...updates }
           }));
           importedCount++;
         }
@@ -878,6 +914,24 @@ const CSSCustomizer = () => {
         }
       }
 
+      // Parse At A Glance zebra striping
+      const atAGlanceMatch = normalizedCSS.match(/\.Plugins-TourPage-GlanceWrapper\s+\.TourPage-Glance\s+\.ui\.grid\s+\.row:nth-child\(2n\)[^{]*\{([^}]+)\}/);
+      if (atAGlanceMatch) {
+        const glanceContent = atAGlanceMatch[1];
+        const backgroundColor = glanceContent.match(/background(?:-color)?:\s*([^;!]+)/);
+        
+        if (backgroundColor) {
+          setElementStyles(prev => ({
+            ...prev,
+            atAGlance: {
+              ...prev.atAGlance,
+              zebraStripingColor: backgroundColor[1].trim()
+            }
+          }));
+          importedCount++;
+        }
+      }
+
       // Parse input fields
       const inputMatch = normalizedCSS.match(/input\[type='text'\][^{]*\{([^}]+)\}/);
       if (inputMatch) {
@@ -995,6 +1049,12 @@ const CSSCustomizer = () => {
         importedCount++;
       }
 
+      if (normalizedCSS.includes('.MobileCheckout-CoverPhoto span.text .title .name') &&
+          normalizedCSS.includes('color: #ffffff')) {
+        setAdvancedCSS(prev => ({ ...prev, mobileCheckoutTitleColor: true }));
+        importedCount++;
+      }
+
       // Parse custom CSS snippets section
       const newSnippets = [];
       
@@ -1038,8 +1098,10 @@ const CSSCustomizer = () => {
         // Advanced CSS selectors
         '#plugins-wrapper', '.TourPage-About-description', 
         '.TourPage-ContactGuide-link', '.ContactGuide-link-text',
+        '.MobileCheckout-CoverPhoto',
         // Element selectors
-        'li', '.tour-wrapper', '.ui.modal'
+        'li', '.tour-wrapper', '.ui.modal', '.ui.grid', '.TourPage-Glance',
+        '.book-tour-btn', '.CheckoutNavigationController', '.BookingRequest-submit'
       ];
       
       // Find all CSS rules
@@ -1316,7 +1378,7 @@ const CSSCustomizer = () => {
     // Background Color - Transparent Plugin Elements
     if (colors.background) {
       css += `/* Transparent Plugin Elements */
-.TourPage-About, .Plugins-TourPage-GlanceWrapper, .grid.tour-page #booking-container {
+.TourPage-About, .Plugins-TourPage-GlanceWrapper, .grid.tour-page #booking-container, #request-booking-mobile, .ar-radio-item {
   background: transparent !important;
 }
 
@@ -1554,6 +1616,16 @@ ${elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor || (elementS
 }
 ` : ''}`;
       }
+
+      // Checkout Navigation Button Font Size
+      if (typography.buttonFontSize) {
+        css += `/* Checkout Navigation Button */
+.CheckoutNavigationController button.BookingRequest-submit {
+  font-size: ${typography.buttonFontSize} !important;
+}
+
+`;
+      }
       
       // Secondary Button Block
       if (hasSecondaryButtonProperties) {
@@ -1600,6 +1672,16 @@ ${elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHover
 .TourPage-ContactGuide-link.ui.basic.button .ContactGuide-link-text,
 .TourPage-ContactGuide-link.ui.basic.button .icon.anyfont {
   color: ${elementStyles.buttons.secondaryColor} !important;
+}
+
+`;
+    }
+
+    // Button Font Size - Checkout Navigation Button Height
+    if (typography.buttonFontSize) {
+      css += `/* Checkout Navigation Button */
+.CheckoutNavigationController button.BookingRequest-submit {
+  height: 50px !important;
 }
 
 `;
@@ -1705,6 +1787,16 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 `;
     }
 
+    // At A Glance - Zebra Striping
+    if (elementStyles.atAGlance.zebraStripingColor) {
+      css += `/* At A Glance - Zebra Striping */
+.Plugins-TourPage-GlanceWrapper .TourPage-Glance .ui.grid .row:nth-child(2n) {
+  background-color: ${elementStyles.atAGlance.zebraStripingColor} !important;
+}
+
+`;
+    }
+
 
     // Mobile Styles
     if (typography.titleSizeMobile || typography.subtitleSizeMobile) {
@@ -1718,6 +1810,26 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
     font-size: ${typography.subtitleSizeMobile} !important;
   }
 ` : ''}}
+
+`;
+    }
+
+    // Mobile Experience List Button
+    if (elementStyles.buttons.mobileListButtonWidth || 
+        elementStyles.buttons.mobileListButtonHeight || 
+        elementStyles.buttons.mobileListButtonMarginTop || 
+        elementStyles.buttons.mobileListButtonMarginLeft || 
+        elementStyles.buttons.mobileListButtonPaddingTop) {
+      css += `/* Mobile Experience List Button */
+@media (max-width: 600px) {
+  .book-tour-btn {${elementStyles.buttons.mobileListButtonWidth ? `
+    width: ${elementStyles.buttons.mobileListButtonWidth} !important;` : ''}${elementStyles.buttons.mobileListButtonMarginTop ? `
+    margin-top: ${elementStyles.buttons.mobileListButtonMarginTop} !important;` : ''}${elementStyles.buttons.mobileListButtonMarginLeft ? `
+    margin-left: ${elementStyles.buttons.mobileListButtonMarginLeft} !important;` : ''}${elementStyles.buttons.mobileListButtonHeight ? `
+    height: ${elementStyles.buttons.mobileListButtonHeight} !important;` : ''}${elementStyles.buttons.mobileListButtonPaddingTop ? `
+    padding-top: ${elementStyles.buttons.mobileListButtonPaddingTop} !important;` : ''}
+  }
+}
 
 `;
     }
@@ -1748,6 +1860,15 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
       css += `/* Advanced CSS - Contact Guide Button Alignment Fix */
 .TourPage-ContactGuide-link.ui.basic.button .ContactGuide-link-text {
   display: inline !important;
+}
+
+`;
+    }
+
+    if (advancedCSS.mobileCheckoutTitleColor) {
+      css += `/* Advanced CSS - Mobile Checkout Title Color Fix */
+.MobileCheckout-CoverPhoto span.text .title .name {
+  color: #ffffff !important;
 }
 
 `;
@@ -5772,6 +5893,85 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   </div>{/* End Hover State Container */}
                 </div>
               </div>
+
+              {/* ============================================ */}
+              {/* MOBILE EXPERIENCE LIST BUTTON - ADVANCED */}
+              {/* ============================================ */}
+              <div style={{
+                background: '#f0f4ff',
+                border: '2px solid #3D57FF',
+                borderRadius: '16px',
+                padding: '32px',
+                marginTop: '32px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px',
+                  marginBottom: '24px'
+                }}>
+                  <div style={{ fontSize: '24px', lineHeight: '1' }}>⚙️</div>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ 
+                      margin: '0 0 8px 0', 
+                      fontSize: '18px', 
+                      color: '#4338ca', 
+                      fontWeight: '700'
+                    }}>
+                      Mobile Experience List Button (Advanced)
+                    </h3>
+                    <p style={{ 
+                      margin: 0, 
+                      fontSize: '14px', 
+                      color: '#4338ca', 
+                      lineHeight: '1.6' 
+                    }}>
+                      Fine-tune the "Book Now" button dimensions on the Experience List page for mobile devices (600px and below). 
+                      These settings only apply to mobile view and don't affect other button styles.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
+                  {[
+                    { key: 'mobileListButtonWidth', label: 'Width', placeholder: '250px' },
+                    { key: 'mobileListButtonHeight', label: 'Height', placeholder: '50px' },
+                    { key: 'mobileListButtonMarginTop', label: 'Margin Top', placeholder: '16px' },
+                    { key: 'mobileListButtonMarginLeft', label: 'Margin Left', placeholder: '-2px' },
+                    { key: 'mobileListButtonPaddingTop', label: 'Padding Top', placeholder: '10px' }
+                  ].map(field => (
+                    <div key={field.key} style={{ 
+                      background: '#ffffff', 
+                      padding: '16px', 
+                      borderRadius: '8px',
+                      border: '1px solid #ddd'
+                    }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '13px' }}>
+                        {field.label}
+                      </label>
+                      <input
+                        type="text"
+                        value={elementStyles.buttons[field.key]}
+                        onChange={(e) => setElementStyles({
+                          ...elementStyles,
+                          buttons: { ...elementStyles.buttons, [field.key]: e.target.value }
+                        })}
+                        placeholder={field.placeholder}
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -6299,6 +6499,98 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                 </div>
               </div>
               </div>
+
+              {/* ============================================ */}
+              {/* AT A GLANCE SECTION */}
+              {/* ============================================ */}
+              <div style={{
+                background: '#ffffff',
+                border: '2px solid #e0e0e0',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 24px 0', 
+                  fontSize: '20px', 
+                  color: '#333', 
+                  fontWeight: '600',
+                  paddingBottom: '16px',
+                  borderBottom: '2px solid #f0f0f0'
+                }}>
+                  👁️ At A Glance
+                </h3>
+                
+                <div style={{ 
+                  background: '#f9f9f9', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#555' }}>
+                    Zebra Striping Background Color
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                      <input
+                        type="color"
+                        value={elementStyles.atAGlance.zebraStripingColor || '#f6f6f6'}
+                        onChange={(e) => setElementStyles({
+                          ...elementStyles,
+                          atAGlance: { ...elementStyles.atAGlance, zebraStripingColor: e.target.value }
+                        })}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          opacity: elementStyles.atAGlance.zebraStripingColor ? 1 : 0,
+                          position: 'absolute',
+                          top: 0,
+                          left: 0
+                        }}
+                      />
+                      {!elementStyles.atAGlance.zebraStripingColor && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px dashed #ccc',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          color: '#999',
+                          fontWeight: '500',
+                          background: 'transparent',
+                          pointerEvents: 'none'
+                        }}>
+                          select
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={elementStyles.atAGlance.zebraStripingColor}
+                      onChange={(e) => setElementStyles({
+                        ...elementStyles,
+                        atAGlance: { ...elementStyles.atAGlance, zebraStripingColor: e.target.value }
+                      })}
+                      placeholder="e.g., #f6f6f6"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -6719,6 +7011,77 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       minWidth: '40px'
                     }}>
                       {advancedCSS.contactGuideAlignment ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Mobile Checkout Title Color Fix Toggle */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Mobile Checkout Title Color Fix
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      Ensures the experience title remains legible on mobile checkout by forcing white color. Recommended when you have a custom heading color applied that may not contrast well with the cover photo.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>.MobileCheckout-CoverPhoto span.text .title .name</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>color: #ffffff !important;</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      mobileCheckoutTitleColor: !advancedCSS.mobileCheckoutTitleColor 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.mobileCheckoutTitleColor ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.mobileCheckoutTitleColor ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.mobileCheckoutTitleColor ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.mobileCheckoutTitleColor ? 'ON' : 'OFF'}
                     </span>
                   </div>
                 </div>
