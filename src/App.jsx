@@ -2223,7 +2223,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                         <small style={{ display: 'block', marginTop: '6px', color: '#666', fontSize: '12px' }}>
@@ -2340,6 +2341,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                                       border: '2px solid #3D57FF',
                                       borderRadius: '6px',
                                       fontSize: '14px',
+                        fontFamily: 'monospace',
                                       background: familyName ? '#e8f5e9' : 'white'
                                     }}
                                   />
@@ -2478,7 +2480,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                         <small style={{ display: 'block', marginTop: '6px', color: '#666', fontSize: '12px' }}>
@@ -2574,6 +2577,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                                       border: '2px solid #3D57FF',
                                       borderRadius: '6px',
                                       fontSize: '14px',
+                        fontFamily: 'monospace',
                                       background: familyName && familyName.trim() ? '#e8f5e9' : 'white'
                                     }}
                                   />
@@ -2691,7 +2695,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                        fontFamily: 'monospace'
                         }}
                       />
                     </div>
@@ -2923,7 +2928,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   border: '1px solid #e0e0e0'
                 }}>
                   <label style={{ 
-                    fontSize: '14px', 
+                    fontSize: '14px',
+                        fontFamily: 'monospace', 
                     fontWeight: '600',
                     color: '#555',
                     cursor: 'pointer',
@@ -3080,6 +3086,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           fontSize: '14px',
+                        fontFamily: 'monospace',
                           fontFamily: 'monospace'
                         }}
                       />
@@ -3158,6 +3165,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           fontSize: '14px',
+                        fontFamily: 'monospace',
                           fontFamily: 'monospace'
                         }}
                       />
@@ -3243,6 +3251,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '1px solid #ddd',
                             borderRadius: '6px',
                             fontSize: '14px',
+                        fontFamily: 'monospace',
                             fontFamily: 'monospace'
                           }}
                         />
@@ -3394,6 +3403,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           fontSize: '14px',
+                        fontFamily: 'monospace',
                           fontFamily: 'monospace'
                         }}
                       />
@@ -3494,6 +3504,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           fontSize: '14px',
+                        fontFamily: 'monospace',
                           fontFamily: 'monospace'
                         }}
                       />
@@ -3692,7 +3703,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -3711,7 +3723,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -3742,7 +3755,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -3761,7 +3775,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -3785,7 +3800,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -3807,6 +3823,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         fontSize: '14px',
+                        fontFamily: 'monospace',
                         fontFamily: 'monospace'
                       }}
                     />
@@ -3952,7 +3969,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -3974,7 +3992,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -4119,7 +4138,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -4141,7 +4161,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -4164,6 +4185,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         fontSize: '14px',
+                        fontFamily: 'monospace',
                         fontFamily: 'monospace'
                       }}
                     />
@@ -4379,7 +4401,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                        fontFamily: 'monospace'
                         }}
                       />
                     </div>
@@ -4469,7 +4492,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               padding: '10px',
                               border: '1px solid #ddd',
                               borderRadius: '6px',
-                              fontSize: '14px'
+                              fontSize: '14px',
+                        fontFamily: 'monospace'
                             }}
                           />
                         </div>
@@ -4583,7 +4607,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -4720,7 +4745,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                        fontFamily: 'monospace'
                         }}
                       />
                     </div>
@@ -4809,7 +4835,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               padding: '10px',
                               border: '1px solid #ddd',
                               borderRadius: '6px',
-                              fontSize: '14px'
+                              fontSize: '14px',
+                        fontFamily: 'monospace'
                             }}
                           />
                         </div>
@@ -5115,6 +5142,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '1px solid #ddd',
                             borderRadius: '6px',
                             fontSize: '14px',
+                        fontFamily: 'monospace',
                             fontFamily: 'monospace'
                           }}
                         />
@@ -5192,6 +5220,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '1px solid #ddd',
                               borderRadius: '6px',
                               fontSize: '14px',
+                        fontFamily: 'monospace',
                               fontFamily: 'monospace'
                             }}
                           />
@@ -5228,7 +5257,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               padding: '10px',
                               border: '1px solid #ddd',
                               borderRadius: '6px',
-                              fontSize: '14px'
+                              fontSize: '14px',
+                        fontFamily: 'monospace'
                             }}
                           />
                         </div>
@@ -5321,6 +5351,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                                 border: '1px solid #ddd',
                                 borderRadius: '6px',
                                 fontSize: '14px',
+                        fontFamily: 'monospace',
                                 fontFamily: 'monospace'
                               }}
                             />
@@ -5357,7 +5388,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -5497,6 +5529,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '1px solid #ddd',
                             borderRadius: '6px',
                             fontSize: '14px',
+                        fontFamily: 'monospace',
                             fontFamily: 'monospace'
                           }}
                         />
@@ -5574,6 +5607,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '1px solid #ddd',
                               borderRadius: '6px',
                               fontSize: '14px',
+                        fontFamily: 'monospace',
                               fontFamily: 'monospace'
                             }}
                           />
@@ -5610,7 +5644,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               padding: '10px',
                               border: '1px solid #ddd',
                               borderRadius: '6px',
-                              fontSize: '14px'
+                              fontSize: '14px',
+                        fontFamily: 'monospace'
                             }}
                           />
                         </div>
@@ -5743,48 +5778,66 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
           {/* Elements Section */}
           {activeSection === 'elements' && (
             <div>
-              <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Element Styles</h2>
+              <h2 style={{ marginBottom: '32px', fontSize: '24px', color: '#333' }}>Element Styles</h2>
               
-              {/* Input Fields */}
-              <h3 style={{ marginTop: '32px', marginBottom: '16px', fontSize: '20px', color: '#333', fontWeight: '600' }}>Input Fields</h3>
-              
-              {/* Accessibility Warning */}
+              {/* ============================================ */}
+              {/* INPUT FIELDS SECTION */}
+              {/* ============================================ */}
               <div style={{
-                background: '#fff3cd',
-                border: '2px solid #ffc107',
-                borderRadius: '12px',
-                padding: '20px',
-                marginBottom: '24px'
+                background: '#ffffff',
+                border: '2px solid #e0e0e0',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px'
               }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px'
+                <h3 style={{ 
+                  margin: '0 0 24px 0', 
+                  fontSize: '20px', 
+                  color: '#333', 
+                  fontWeight: '600',
+                  paddingBottom: '16px',
+                  borderBottom: '2px solid #f0f0f0'
                 }}>
-                  <div style={{ fontSize: '24px', lineHeight: '1' }}>⚠️</div>
-                  <div>
-                    <div style={{
-                      fontWeight: '700',
-                      fontSize: '16px',
-                      color: '#856404',
-                      marginBottom: '8px'
-                    }}>
-                      Accessibility Notice
-                    </div>
-                    <div style={{
-                      fontSize: '14px',
-                      lineHeight: '1.6',
-                      color: '#856404'
-                    }}>
-                      Customizing input fields is generally not recommended to ensure accessibility compliance. 
-                      Only customize these fields if completely necessary. Default browser styles provide the 
-                      best accessibility and user experience across different assistive technologies.
+                  📋 Input Fields
+                </h3>
+                
+                {/* Accessibility Warning */}
+                <div style={{
+                  background: '#fff3cd',
+                  border: '2px solid #ffc107',
+                  borderRadius: '12px',
+                  padding: '20px',
+                  marginBottom: '24px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px'
+                  }}>
+                    <div style={{ fontSize: '24px', lineHeight: '1' }}>⚠️</div>
+                    <div>
+                      <div style={{
+                        fontWeight: '700',
+                        fontSize: '16px',
+                        color: '#856404',
+                        marginBottom: '8px'
+                      }}>
+                        Accessibility Notice
+                      </div>
+                      <div style={{
+                        fontSize: '14px',
+                        lineHeight: '1.6',
+                        color: '#856404'
+                      }}>
+                        Customizing input fields is generally not recommended to ensure accessibility compliance. 
+                        Only customize these fields if completely necessary. Default browser styles provide the 
+                        best accessibility and user experience across different assistive technologies.
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 {[
                   { key: 'backgroundColor', label: 'Background Color', type: 'color' },
                   { key: 'textColor', label: 'Text Color', type: 'color' },
@@ -5854,7 +5907,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -5874,18 +5928,38 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                        fontFamily: 'monospace'
                         }}
                       />
                     )}
                   </div>
                 ))}
               </div>
+              </div>
 
-              {/* Lists Subsection */}
-              <h3 style={{ marginTop: '48px', marginBottom: '16px', fontSize: '20px', color: '#333', fontWeight: '600' }}>Lists</h3>
-              
-              {/* Background Color - special two-input component */}
+              {/* ============================================ */}
+              {/* LISTS SECTION */}
+              {/* ============================================ */}
+              <div style={{
+                background: '#ffffff',
+                border: '2px solid #e0e0e0',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 24px 0', 
+                  fontSize: '20px', 
+                  color: '#333', 
+                  fontWeight: '600',
+                  paddingBottom: '16px',
+                  borderBottom: '2px solid #f0f0f0'
+                }}>
+                  📄 Lists
+                </h3>
+                
+                {/* Background Color - special two-input component */}
               <div style={{ 
                 background: '#f9f9f9', 
                 padding: '20px', 
@@ -5953,6 +6027,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         fontSize: '14px',
+                        fontFamily: 'monospace',
                         fontFamily: 'monospace'
                       }}
                     />
@@ -5991,6 +6066,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       border: '1px solid #ddd',
                       borderRadius: '6px',
                       fontSize: '14px',
+                        fontFamily: 'monospace',
                       fontFamily: 'monospace'
                     }}
                   />
@@ -6022,6 +6098,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       border: '1px solid #ddd',
                       borderRadius: '6px',
                       fontSize: '14px',
+                        fontFamily: 'monospace',
                       fontFamily: 'monospace'
                     }}
                   />
@@ -6061,11 +6138,30 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   </select>
                 </div>
               </div>
+              </div>
 
-              {/* Experience List Card */}
-              <h3 style={{ marginTop: '48px', marginBottom: '16px', fontSize: '20px', color: '#333', fontWeight: '600' }}>Experience List Card</h3>
-              
-              <div style={{ 
+              {/* ============================================ */}
+              {/* EXPERIENCE LIST CARD SECTION */}
+              {/* ============================================ */}
+              <div style={{
+                background: '#ffffff',
+                border: '2px solid #e0e0e0',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 24px 0', 
+                  fontSize: '20px', 
+                  color: '#333', 
+                  fontWeight: '600',
+                  paddingBottom: '16px',
+                  borderBottom: '2px solid #f0f0f0'
+                }}>
+                  🎫 Experience List Card
+                </h3>
+                
+                <div style={{ 
                 background: '#f9f9f9', 
                 padding: '20px', 
                 borderRadius: '12px',
@@ -6091,7 +6187,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -6186,6 +6283,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '1px solid #ddd',
                           borderRadius: '6px',
                           fontSize: '14px',
+                        fontFamily: 'monospace',
                           fontFamily: 'monospace'
                         }}
                       />
@@ -6199,6 +6297,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     </div>
                   </div>
                 </div>
+              </div>
               </div>
             </div>
           )}
@@ -6345,7 +6444,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            fontSize: '14px',
+                        fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -6365,7 +6465,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           padding: '10px',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
-                          fontSize: '14px'
+                          fontSize: '14px',
+                        fontFamily: 'monospace'
                         }}
                       />
                     )}
@@ -6736,7 +6837,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
-                        fontSize: '14px'
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
                       }}
                     />
                   </div>
@@ -6758,6 +6860,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         border: '1px solid #ddd',
                         borderRadius: '6px',
                         fontSize: '14px',
+                        fontFamily: 'monospace',
                         fontFamily: 'monospace'
                       }}
                     />
