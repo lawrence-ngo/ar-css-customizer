@@ -41,24 +41,40 @@ const CSSCustomizer = () => {
 
   // Function to check if a color is light or dark
   const isLightColor = (color) => {
+    if (!color || typeof color !== 'string') return true; // Default to light if invalid
+    
     // Convert hex to RGB
     let r, g, b;
     
     if (color.startsWith('#')) {
       const hex = color.replace('#', '');
-      r = parseInt(hex.substr(0, 2), 16);
-      g = parseInt(hex.substr(2, 2), 16);
-      b = parseInt(hex.substr(4, 2), 16);
+      if (hex.length === 3) {
+        // Handle shorthand hex (#FFF)
+        r = parseInt(hex[0] + hex[0], 16);
+        g = parseInt(hex[1] + hex[1], 16);
+        b = parseInt(hex[2] + hex[2], 16);
+      } else if (hex.length >= 6) {
+        r = parseInt(hex.substr(0, 2), 16);
+        g = parseInt(hex.substr(2, 2), 16);
+        b = parseInt(hex.substr(4, 2), 16);
+      } else {
+        return true; // Invalid hex, default to light
+      }
     } else if (color.startsWith('rgb')) {
       const matches = color.match(/\d+/g);
-      if (matches) {
+      if (matches && matches.length >= 3) {
         r = parseInt(matches[0]);
         g = parseInt(matches[1]);
         b = parseInt(matches[2]);
+      } else {
+        return true; // Invalid rgb, default to light
       }
     } else {
       return true; // Default to light if can't parse
     }
+    
+    // Check for NaN values
+    if (isNaN(r) || isNaN(g) || isNaN(b)) return true;
     
     // Calculate relative luminance
     const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
@@ -70,19 +86,25 @@ const CSSCustomizer = () => {
     enableFonts: true,
     bodyFont: '',
     bodyFallback: 'Arial',
+    bodyFontWeight: '',
+    bodyTextTransform: '',
+    bodyLineHeight: '',
     headingFont: '',
     headingFallback: 'Arial',
     headingFontWeight: '',
     headingTextTransform: '',
     buttonFont: '',
     buttonFallback: 'Arial',
+    buttonFontWeight: '',
+    buttonLineHeight: '',
+    buttonFontSize: '',
     bodySize: '',
     titleSize: '',
     titleLineHeight: '',
     titleSizeMobile: '',
     subtitleSize: '',
     subtitleSizeMobile: '',
-    textTransform: 'uppercase',
+    textTransform: 'none',
     linkUnderline: false
   });
 
@@ -196,10 +218,10 @@ const CSSCustomizer = () => {
       primaryType: 'solid', // 'solid' or 'outlined'
       primaryColor: '',
       primaryBg: 'var(--color-background)',
-      primaryBorderRadius: '8px',
+      primaryBorderRadius: '',
       primaryHoverType: 'solid', // 'solid' or 'outlined'
       hoverColor: '',
-      hoverBg: 'var(--color-hover)',
+      hoverBg: '',
       primaryBorderWidth: '1px',
       primaryBorderStyle: 'solid',
       primaryBorderColor: 'button', // references colors.button
@@ -209,8 +231,8 @@ const CSSCustomizer = () => {
       secondaryType: 'outlined', // 'solid' or 'outlined'
       secondaryColor: '',
       secondaryBg: 'var(--color-background)',
-      secondaryBorderRadius: '8px',
-      secondaryHoverType: 'outlined', // 'solid' or 'outlined'
+      secondaryBorderRadius: '',
+      secondaryHoverType: 'solid', // 'solid' or 'outlined'
       secondaryHoverColor: '',
       secondaryHoverBg: '',
       secondaryBorderWidth: '1px',
@@ -219,44 +241,368 @@ const CSSCustomizer = () => {
       secondaryHoverBorderWidth: '1px',
       secondaryHoverBorderStyle: 'solid',
       secondaryHoverBorderColor: 'button', // references colors.button
-      transition: 'all 0.3s ease'
+      primaryTransition: 'none',
+      secondaryTransition: 'none'
     },
     inputs: {
-      backgroundColor: '#FFFFFF',
-      textColor: '#000000',
-      borderColor: '#cccccc',
-      borderRadius: '4px'
+      backgroundColor: '',
+      textColor: '',
+      borderColor: '',
+      borderRadius: ''
     },
     modals: {
-      backgroundColor: '#000000',
-      textColor: 'var(--color-body)',
-      borderColor: '#6e6e6e',
-      padding: '16px',
+      backgroundColor: '',
+      textColor: '',
+      borderColor: '',
+      padding: '',
       darkMode: false
     },
     lists: {
-      backgroundColor: 'var(--color-background)',
-      padding: '4px 8px',
-      margin: '4px 0',
-      listStyle: 'disc'
+      backgroundColor: '',
+      padding: '',
+      margin: '',
+      listStyle: 'Default'
     }
   });
 
+  // Advanced CSS toggles
+  const [advancedCSS, setAdvancedCSS] = useState({
+    pluginMarginFix: true,
+    autoExpandDescription: false
+  });
+
   // Custom CSS snippets
-  const [customSnippets, setCustomSnippets] = useState([
-    {
-      id: 1,
-      name: 'Plugin Margin Fix',
-      selector: '#plugins-wrapper>div.ui.equal.height.grid.stackable.tour-page',
-      properties: 'margin-top: 14px !important;'
-    },
-    {
-      id: 2,
-      name: 'Hero Image Position',
-      selector: '.TourPage-Gallery',
-      properties: 'margin-top: 80px !important;'
+  const [customSnippets, setCustomSnippets] = useState([]);
+
+  // Import configuration state
+  const [importCSS, setImportCSS] = useState('');
+  const [importStatus, setImportStatus] = useState({ type: '', message: '' });
+
+  // Parse and import CSS configuration
+  const parseAndImportCSS = (cssText) => {
+    try {
+      // Reset status
+      setImportStatus({ type: '', message: '' });
+      
+      if (!cssText || !cssText.trim()) {
+        setImportStatus({ type: 'error', message: 'Please paste a CSS configuration to import.' });
+        return;
+      }
+
+      // Normalize the CSS text
+      const normalizedCSS = cssText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      
+      let importedCount = 0;
+
+      // Parse CSS Variables from :root
+      const rootMatch = normalizedCSS.match(/:root\s*\{([^}]+)\}/);
+      if (rootMatch) {
+        const rootContent = rootMatch[1];
+        
+        // Extract colors
+        const colorBody = rootContent.match(/--color-body:\s*([^;]+);/);
+        const colorHeading = rootContent.match(/--color-heading:\s*([^;]+);/);
+        const colorButton = rootContent.match(/--color-button:\s*([^;]+);/);
+        const colorHover = rootContent.match(/--color-hover:\s*([^;]+);/);
+        const colorBrand = rootContent.match(/--color-brand:\s*([^;]+);/);
+        const colorBackground = rootContent.match(/--color-background:\s*([^;]+);/);
+
+        const newColors = { ...colors };
+        if (colorBody) { newColors.body = colorBody[1].trim(); importedCount++; }
+        if (colorHeading) { newColors.heading = colorHeading[1].trim(); importedCount++; }
+        if (colorButton) { newColors.button = colorButton[1].trim(); importedCount++; }
+        if (colorHover) { newColors.hover = colorHover[1].trim(); importedCount++; }
+        if (colorBrand) { newColors.brand = colorBrand[1].trim(); importedCount++; }
+        if (colorBackground) { newColors.background = colorBackground[1].trim(); importedCount++; }
+        setColors(newColors);
+
+        // Extract font families from variables (just the primary font name)
+        const fontBody = rootContent.match(/--font-body:\s*['"]?([^'",;]+)/);
+        const fontHeading = rootContent.match(/--font-heading:\s*['"]?([^'",;]+)/);
+        const fontButton = rootContent.match(/--font-button:\s*['"]?([^'",;]+)/);
+
+        const newTypography = { ...typography };
+        if (fontBody) { newTypography.bodyFont = fontBody[1].trim().replace(/['"]/g, ''); importedCount++; }
+        if (fontHeading) { newTypography.headingFont = fontHeading[1].trim().replace(/['"]/g, ''); importedCount++; }
+        if (fontButton) { newTypography.buttonFont = fontButton[1].trim().replace(/['"]/g, ''); importedCount++; }
+        setTypography(prev => ({ ...prev, ...newTypography }));
+      }
+
+      // Check for dark theme (look for iframe_wrapper background)
+      if (normalizedCSS.includes('#iframe_wrapper') && normalizedCSS.includes('background: var(--color-background)')) {
+        setIsDarkTheme(true);
+        importedCount++;
+      }
+
+      // Parse @import for Google Fonts
+      const googleImports = normalizedCSS.matchAll(/@import\s+url\(['"]?(https:\/\/fonts\.googleapis\.com[^'")\s]+)['"]?\)/g);
+      const newFonts = [...fonts];
+      
+      for (const match of googleImports) {
+        const googleLink = match[1];
+        // Extract font families from URL
+        const familyMatches = googleLink.matchAll(/family=([^:&]+)/g);
+        const families = [];
+        for (const fam of familyMatches) {
+          const familyName = decodeURIComponent(fam[1].replace(/\+/g, ' '));
+          families.push({ name: familyName, fallback: 'Arial' });
+        }
+        
+        if (families.length > 0) {
+          newFonts.push({
+            id: Date.now() + Math.random(),
+            name: families[0].name,
+            type: 'google',
+            googleLink: googleLink,
+            googleFamilies: families,
+            typekitUrl: '',
+            typekitFamilies: [],
+            fallback: 'Arial',
+            files: [{ url: '', weight: 'normal', style: 'normal' }]
+          });
+          importedCount++;
+        }
+      }
+
+      // Parse @import for Adobe Typekit
+      const typekitImports = normalizedCSS.matchAll(/@import\s+url\(['"]?(https:\/\/use\.typekit\.net[^'")\s]+)['"]?\)/g);
+      for (const match of typekitImports) {
+        const typekitUrl = match[1];
+        newFonts.push({
+          id: Date.now() + Math.random(),
+          name: 'Typekit Font',
+          type: 'typekit',
+          googleLink: '',
+          googleFamilies: [],
+          typekitUrl: typekitUrl,
+          typekitFamilies: [], // User will need to add family names manually
+          fallback: 'Arial',
+          files: [{ url: '', weight: 'normal', style: 'normal' }]
+        });
+        importedCount++;
+      }
+
+      // Parse @font-face for custom fonts
+      const fontFaceMatches = normalizedCSS.matchAll(/@font-face\s*\{([^}]+)\}/g);
+      for (const match of fontFaceMatches) {
+        const fontFaceContent = match[1];
+        const fontFamily = fontFaceContent.match(/font-family:\s*['"]?([^'";\n]+)['"]?/);
+        const srcUrl = fontFaceContent.match(/src:\s*url\(['"]?([^'")\s]+)['"]?\)/);
+        const fontWeight = fontFaceContent.match(/font-weight:\s*([^;\n]+)/);
+        const fontStyle = fontFaceContent.match(/font-style:\s*([^;\n]+)/);
+
+        if (fontFamily && srcUrl) {
+          const familyName = fontFamily[1].trim();
+          // Check if we already have this font
+          const existingFont = newFonts.find(f => f.type === 'custom' && f.name === familyName);
+          
+          if (existingFont) {
+            // Add file to existing font
+            existingFont.files.push({
+              url: srcUrl[1].trim(),
+              weight: fontWeight ? fontWeight[1].trim() : 'normal',
+              style: fontStyle ? fontStyle[1].trim() : 'normal'
+            });
+          } else {
+            // Create new font entry
+            newFonts.push({
+              id: Date.now() + Math.random(),
+              name: familyName,
+              type: 'custom',
+              googleLink: '',
+              googleFamilies: [],
+              typekitUrl: '',
+              typekitFamilies: [],
+              fallback: 'Arial',
+              files: [{
+                url: srcUrl[1].trim(),
+                weight: fontWeight ? fontWeight[1].trim() : 'normal',
+                style: fontStyle ? fontStyle[1].trim() : 'normal'
+              }]
+            });
+            importedCount++;
+          }
+        }
+      }
+
+      setFonts(newFonts);
+
+      // Parse typography settings from body
+      const bodyMatch = normalizedCSS.match(/body\s*\{([^}]+)\}/);
+      if (bodyMatch) {
+        const bodyContent = bodyMatch[1];
+        const bodySize = bodyContent.match(/font-size:\s*([^;!]+)/);
+        const bodyLineHeight = bodyContent.match(/line-height:\s*([^;!]+)/);
+        
+        setTypography(prev => ({
+          ...prev,
+          bodySize: bodySize ? bodySize[1].trim() : prev.bodySize,
+          bodyLineHeight: bodyLineHeight ? bodyLineHeight[1].trim() : prev.bodyLineHeight
+        }));
+        if (bodySize || bodyLineHeight) importedCount++;
+      }
+
+      // Parse heading settings
+      const headingMatch = normalizedCSS.match(/h1,\s*h2,\s*h3,\s*h4,\s*h5,\s*h6[^{]*\{([^}]+)\}/);
+      if (headingMatch) {
+        const headingContent = headingMatch[1];
+        const fontWeight = headingContent.match(/font-weight:\s*([^;!]+)/);
+        const textTransform = headingContent.match(/text-transform:\s*([^;!]+)/);
+        
+        setTypography(prev => ({
+          ...prev,
+          headingFontWeight: fontWeight ? fontWeight[1].trim() : prev.headingFontWeight,
+          headingTextTransform: textTransform ? textTransform[1].trim() : prev.headingTextTransform
+        }));
+        if (fontWeight || textTransform) importedCount++;
+      }
+
+      // Parse title sizes
+      const titleMatch = normalizedCSS.match(/\.tour-title[^{]*\{([^}]+)\}/);
+      if (titleMatch) {
+        const titleContent = titleMatch[1];
+        const titleSize = titleContent.match(/font-size:\s*([^;!]+)/);
+        const titleLineHeight = titleContent.match(/line-height:\s*([^;!]+)/);
+        
+        setTypography(prev => ({
+          ...prev,
+          titleSize: titleSize ? titleSize[1].trim() : prev.titleSize,
+          titleLineHeight: titleLineHeight ? titleLineHeight[1].trim() : prev.titleLineHeight
+        }));
+        if (titleSize || titleLineHeight) importedCount++;
+      }
+
+      // Parse button border radius
+      const buttonMatch = normalizedCSS.match(/\.button[^{]*\{([^}]+)\}/);
+      if (buttonMatch) {
+        const buttonContent = buttonMatch[1];
+        const borderRadius = buttonContent.match(/border-radius:\s*([^;!]+)/);
+        const textTransform = buttonContent.match(/text-transform:\s*([^;!]+)/);
+        
+        if (borderRadius) {
+          setElementStyles(prev => ({
+            ...prev,
+            buttons: { ...prev.buttons, borderRadius: borderRadius[1].trim() }
+          }));
+          importedCount++;
+        }
+        if (textTransform) {
+          setTypography(prev => ({ ...prev, textTransform: textTransform[1].trim() }));
+        }
+      }
+
+      // Parse link underline setting
+      if (normalizedCSS.includes('text-decoration: underline')) {
+        setTypography(prev => ({ ...prev, linkUnderline: true }));
+        importedCount++;
+      }
+
+      // Parse custom CSS snippets section
+      const newSnippets = [];
+      
+      // Look for the "Custom CSS Snippets" section
+      const customSectionMatch = normalizedCSS.match(/\/\*\s*Custom CSS Snippets\s*\*\/([\s\S]*?)(?=\/\*\s*(?!Custom:|Snippet)|$)/);
+      
+      if (customSectionMatch) {
+        const customSection = customSectionMatch[1];
+        // Parse individual snippets: /* Name */ selector { properties }
+        const snippetMatches = customSection.matchAll(/\/\*\s*([^*]+?)\s*\*\/\s*([^{]+)\s*\{([^}]+)\}/g);
+        
+        for (const match of snippetMatches) {
+          const name = match[1].trim();
+          const selector = match[2].trim();
+          const properties = match[3].trim();
+          
+          if (selector && properties) {
+            newSnippets.push({
+              id: Date.now() + Math.random(),
+              name: name || 'Imported Snippet',
+              selector: selector,
+              properties: properties
+            });
+            importedCount++;
+          }
+        }
+      }
+      
+      // Also look for any CSS rules after standard sections that might be custom
+      // These are rules that don't match known selectors
+      const knownSelectors = [
+        ':root', 'body', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        '.button', '.ui.button', '.ui.anygreen', '.ui.basic',
+        '.tour-title', '.tour-tagline', '.TourPage', '.CheckoutSummary',
+        '.ConfirmationContainer', '.BookingRequest', '.infoPanel',
+        '#iframe_wrapper', '#request-booking', '.Plugins-',
+        '.ModifyBooking', '.DiscountCode', '.rescheduleModal',
+        '.contactModal', '.multi-select', '.css-', '@font-face',
+        '@import', '@media', '.ConfirmationDefault', '.GoG',
+        'a ', 'a:', 'input', 'select', 'textarea', '.field'
+      ];
+      
+      // Find all CSS rules
+      const allRules = normalizedCSS.matchAll(/([^{}@]+)\s*\{([^{}]+)\}/g);
+      
+      for (const match of allRules) {
+        const selector = match[1].trim();
+        const properties = match[2].trim();
+        
+        // Skip if it's a known/standard selector
+        const isKnownSelector = knownSelectors.some(known => 
+          selector.toLowerCase().includes(known.toLowerCase()) ||
+          selector.startsWith(':root') ||
+          selector.startsWith('@')
+        );
+        
+        // Skip if already captured in custom snippets section
+        const alreadyCaptured = newSnippets.some(s => 
+          s.selector === selector && s.properties === properties
+        );
+        
+        // Skip empty or very short properties (likely parsed incorrectly)
+        if (!isKnownSelector && !alreadyCaptured && properties.length > 5 && selector.length > 1) {
+          // Check if this looks like a custom selector (has a class or id)
+          if (selector.includes('.') || selector.includes('#')) {
+            // Look for a comment before this rule to use as name
+            const selectorIndex = normalizedCSS.indexOf(selector);
+            const beforeRule = selectorIndex > 0 ? normalizedCSS.substring(Math.max(0, selectorIndex - 200), selectorIndex) : '';
+            const commentMatch = beforeRule.match(/\/\*\s*([^*]+?)\s*\*\/\s*$/);
+            
+            newSnippets.push({
+              id: Date.now() + Math.random(),
+              name: commentMatch ? commentMatch[1].trim() : 'Imported Custom Rule',
+              selector: selector,
+              properties: properties
+            });
+            importedCount++;
+          }
+        }
+      }
+      
+      if (newSnippets.length > 0) {
+        setCustomSnippets(prev => [...prev, ...newSnippets]);
+      }
+
+      if (importedCount > 0) {
+        setImportStatus({ 
+          type: 'success', 
+          message: `Successfully imported ${importedCount} configuration${importedCount > 1 ? 's' : ''}! Review the settings in each section.` 
+        });
+        setImportCSS(''); // Clear the textarea on success
+      } else {
+        setImportStatus({ 
+          type: 'warning', 
+          message: 'No recognizable configuration found. Make sure you\'re pasting CSS exported from this tool.' 
+        });
+      }
+
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportStatus({ 
+        type: 'error', 
+        message: 'Error parsing CSS. Please check the format and try again.' 
+      });
     }
-  ]);
+  };
 
   // Function to get all available font families (including individual Typekit families)
   const getAllFontFamilies = () => {
@@ -397,8 +743,14 @@ const CSSCustomizer = () => {
   const generateCSS = () => {
     let css = '';
 
-    // Font Faces - Typekit ALWAYS first, then Google, then Custom (only if fonts enabled)
-    if (typography.enableFonts) {
+    // Font Faces - Typekit ALWAYS first, then Google, then Custom
+    const hasFontDefinitions = fonts.some(f => 
+      (f.type === 'typekit' && f.typekitUrl) || 
+      (f.type === 'google' && f.googleLink) || 
+      (f.type === 'custom' && f.files.some(file => file.url))
+    );
+    
+    if (hasFontDefinitions) {
       // 1. Adobe Typekit fonts first
       fonts.forEach(font => {
         if (font.type === 'typekit' && font.typekitUrl) {
@@ -437,8 +789,12 @@ const CSSCustomizer = () => {
       });
     }
 
-    // CSS Variables
-    css += `/* Variables */
+    // CSS Variables - only generate if there are any variables to define
+    const hasColorVars = colors.body || colors.heading || colors.button || colors.hover || colors.brand || colors.background;
+    const hasFontVars = typography.bodyFont || typography.headingFont || typography.buttonFont;
+    
+    if (hasColorVars || hasFontVars) {
+      css += `/* Variables */
 :root {${colors.body ? `
   --color-body: ${colors.body};` : ''}${colors.heading ? `
   --color-heading: ${colors.heading};` : ''}${colors.button ? `
@@ -449,11 +805,10 @@ const CSSCustomizer = () => {
   --font-body: ${buildFontStack(typography.bodyFont, getFontFallback(typography.bodyFont))};` : ''}${typography.headingFont ? `
   --font-heading: ${buildFontStack(typography.headingFont, getFontFallback(typography.headingFont))};` : ''}${typography.buttonFont ? `
   --font-button: ${buildFontStack(typography.buttonFont, getFontFallback(typography.buttonFont))};` : ''}
-  --transition: ${elementStyles.buttons.transition};
-  --text-transform: ${typography.textTransform};
 }
 
 `;
+    }
 
     // Dark Theme Styles
     if (isDarkTheme) {
@@ -520,34 +875,72 @@ const CSSCustomizer = () => {
 `;
     }
 
-    // Base Typography
-    css += `/* Typography */
-body {${colors.body ? `
+    // Base Typography - only generate if there are customizations
+    const hasBodyStyles = colors.body || typography.bodyFont || colors.background || typography.bodySize || typography.bodyFontWeight || typography.bodyTextTransform || typography.bodyLineHeight;
+    const hasHeadingStyles = typography.headingFont || typography.headingFontWeight || colors.heading || typography.headingTextTransform;
+    
+    if (hasBodyStyles || hasHeadingStyles || typography.titleSize || typography.titleLineHeight || typography.subtitleSize) {
+      css += `/* Typography */
+`;
+      
+      // Body styles
+      if (hasBodyStyles) {
+        css += `body {${colors.body ? `
   color: var(--color-body) !important;` : ''}${typography.bodyFont ? `
-  font-family: var(--font-body) !important;` : ''}
-  font-weight: normal !important;
+  font-family: var(--font-body) !important;` : ''}${typography.bodyFontWeight ? `
+  font-weight: ${typography.bodyFontWeight} !important;` : `
+  font-weight: normal !important;`}
   font-style: normal;${colors.background ? `
   background: var(--color-background);` : ''}${typography.bodySize ? `
-  font-size: ${typography.bodySize} !important;` : ''}
+  font-size: ${typography.bodySize} !important;` : ''}${typography.bodyLineHeight ? `
+  line-height: ${typography.bodyLineHeight} !important;` : ''}${typography.bodyTextTransform && typography.bodyTextTransform !== 'none' ? `
+  text-transform: ${typography.bodyTextTransform} !important;` : ''}
 }
 
-h1, h2, h3, h4, h5, h6, .infoPanel .tourName {${typography.headingFont ? `
+`;
+      }
+      
+      // Additional body color selectors
+      if (colors.body) {
+        css += `.BookingRequest-Addons .BookingRequest-Addons-addon .name, .BookingRequest-Addons .BookingRequest-Addons-addon .description, .BookingRequest-Addons .BookingRequest-Addons-addon .price, .tour-description, .tour-dates-available, .book-tour-details, .TourPage-About-description, .TourPage-BookingDetails,
+.TourPage-BookingDetails .BookingRequest-form .ui.dropdown .text.default, .CheckoutSummary-ContentBox table td, .css-lkdkks {
+  color: var(--color-body) !important;
+}
+
+`;
+      }
+      
+      // Heading styles
+      if (hasHeadingStyles) {
+        css += `h1, h2, h3, h4, h5, h6, .infoPanel .tourName {${typography.headingFont ? `
   font-family: var(--font-heading) !important;` : ''}${typography.headingFontWeight ? `
   font-weight: ${typography.headingFontWeight} !important;` : ''}${colors.heading ? `
   color: var(--color-heading) !important;` : ''}${typography.headingTextTransform ? `
   text-transform: ${typography.headingTextTransform} !important;` : ''}
 }
 
-${typography.titleSize || typography.titleLineHeight ? `.tour-title, .TourPage-About-title {${typography.titleSize ? `
+`;
+      }
+
+      // Title styles
+      if (typography.titleSize || typography.titleLineHeight) {
+        css += `.tour-title, .TourPage-About-title {${typography.titleSize ? `
   font-size: ${typography.titleSize} !important;` : ''}${typography.titleLineHeight ? `
   line-height: ${typography.titleLineHeight} !important;` : ''}
 }
 
-` : ''}${typography.subtitleSize ? `.tour-tagline, .TourPage-About-tagline {
+`;
+      }
+      
+      // Subtitle styles
+      if (typography.subtitleSize) {
+        css += `.tour-tagline, .TourPage-About-tagline {
   font-size: ${typography.subtitleSize} !important;
 }
 
-` : ''}`;
+`;
+      }
+    }
 
     // Title color override
     if (colors.titleOverride) {
@@ -576,77 +969,166 @@ ${typography.titleSize || typography.titleLineHeight ? `.tour-title, .TourPage-A
 `;
     }
 
-    // Buttons
-    css += `/* Buttons */
+    // Buttons - only generate if there are customizations or colors that buttons would use
+    const hasButtonCustomizations = typography.buttonFont || 
+                                    typography.buttonFontWeight ||
+                                    typography.buttonLineHeight ||
+                                    typography.buttonFontSize ||
+                                    elementStyles.buttons.primaryColor || 
+                                    elementStyles.buttons.hoverColor ||
+                                    elementStyles.buttons.secondaryColor ||
+                                    elementStyles.buttons.primaryBorderRadius ||
+                                    elementStyles.buttons.secondaryBorderRadius;
+    const hasButtonColors = colors.button || colors.hover || colors.background;
+    
+    // Check if primary button block would have any properties
+    const hasPrimaryButtonProperties = typography.buttonFont ||
+                                       typography.buttonFontWeight ||
+                                       elementStyles.buttons.primaryColor ||
+                                       colors.button ||
+                                       elementStyles.buttons.primaryBorderRadius ||
+                                       (elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor) ||
+                                       (typography.textTransform && typography.textTransform !== 'none') ||
+                                       typography.buttonLineHeight ||
+                                       typography.buttonFontSize;
+    
+    // Check if secondary button block would have any properties
+    const hasSecondaryButtonProperties = typography.buttonFont ||
+                                         typography.buttonFontWeight ||
+                                         elementStyles.buttons.secondaryColor ||
+                                         colors.button ||
+                                         colors.background ||
+                                         elementStyles.buttons.secondaryBorderRadius ||
+                                         (elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHoverColor) ||
+                                         (typography.textTransform && typography.textTransform !== 'none') ||
+                                         typography.buttonLineHeight ||
+                                         typography.buttonFontSize;
+    
+    if (hasButtonCustomizations || hasButtonColors) {
+      // Primary Button Block
+      if (hasPrimaryButtonProperties) {
+        css += `/* Buttons */
 .button, .ui.anygreen.button, .TourPage-ContactGuide-submit-button.ui.large.button,
 #request-booking-mobile .ui.button, .ConfirmationContainer .ButtonContainer .ui.button,
 .CheckoutNavigationController button.BookingRequest-submit, [data-testid="update-email-btn"],
 .rescheduleModal .modalActions .submitButton, .contactModal .modalActions .submitButton, .ConfirmationDefault .GoGAdditionalInfoButton, [data-testid="apply-filter"] {${typography.buttonFont ? `
-  font-family: var(--font-button) !important;` : ''}
-  font-weight: normal !important;
-  color: ${elementStyles.buttons.primaryColor} !important;
-  background: ${elementStyles.buttons.primaryBg} !important;
-  border-radius: ${elementStyles.buttons.borderRadius} !important;
-  transition: var(--transition) !important;
-  text-transform: var(--text-transform) !important;
-  border: ${elementStyles.buttons.border} !important;
+  font-family: var(--font-button) !important;` : ''}${typography.buttonFontWeight ? `
+  font-weight: ${typography.buttonFontWeight} !important;` : ''}${elementStyles.buttons.primaryType === 'outlined' ? (colors.button ? `
+  color: ${elementStyles.buttons.primaryColor || 'var(--color-button)'} !important;
+  background: transparent !important;` : '') : `${elementStyles.buttons.primaryColor ? `
+  color: ${elementStyles.buttons.primaryColor} !important;` : ''}${colors.button ? `
+  background: var(--color-button) !important;` : ''}`}${elementStyles.buttons.primaryBorderRadius ? `
+  border-radius: ${elementStyles.buttons.primaryBorderRadius} !important;` : ''}${(elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor) && elementStyles.buttons.primaryTransition && elementStyles.buttons.primaryTransition !== 'none' ? `
+  transition: ${elementStyles.buttons.primaryTransition} !important;` : ''}${typography.textTransform && typography.textTransform !== 'none' ? `
+  text-transform: ${typography.textTransform} !important;` : ''}${typography.buttonLineHeight ? `
+  line-height: ${typography.buttonLineHeight} !important;` : ''}${typography.buttonFontSize ? `
+  font-size: ${typography.buttonFontSize} !important;` : ''}${colors.button ? `
+  border: ${elementStyles.buttons.primaryType === 'solid' ? '1px solid var(--color-button)' : `${elementStyles.buttons.primaryBorderWidth} ${elementStyles.buttons.primaryBorderStyle} ${elementStyles.buttons.primaryBorderColor === 'button' ? 'var(--color-button)' : elementStyles.buttons.primaryBorderColor}`} !important;` : ''}
 }
-
+${elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor || (elementStyles.buttons.primaryHoverType === 'outlined' && colors.button) || (elementStyles.buttons.primaryHoverType === 'solid' && colors.hover) ? `
 .button:hover, .ui.anygreen.button:hover, .TourPage-ContactGuide-submit-button.ui.large.button:hover,
-.ConfirmationContainer .ButtonContainer .ui.button:hover, .CheckoutNavigationController button.BookingRequest-submit:hover, .ConfirmationDefault .GoGAdditionalInfoButton:hover, .rescheduleModal .modalActions .submitButton:hover, .contactModal .modalActions .submitButton:hover, [data-testid="apply-filter"]:hover {
-  background-color: ${elementStyles.buttons.hoverBg} !important;
-  color: ${elementStyles.buttons.hoverColor} !important;
+.ConfirmationContainer .ButtonContainer .ui.button:hover, .CheckoutNavigationController button.BookingRequest-submit:hover, .ConfirmationDefault .GoGAdditionalInfoButton:hover, .rescheduleModal .modalActions .submitButton:hover, .contactModal .modalActions .submitButton:hover, [data-testid="apply-filter"]:hover {${elementStyles.buttons.primaryHoverType === 'outlined' ? (colors.button ? `
+  color: ${elementStyles.buttons.hoverColor || 'var(--color-button)'} !important;
+  background: transparent !important;` : '') : elementStyles.buttons.primaryHoverType === 'solid' ? (colors.hover ? `
+  color: ${elementStyles.buttons.hoverColor || '#ffffff'} !important;
+  background: var(--color-hover) !important;` : '') : `${elementStyles.buttons.hoverBg ? `
+  background-color: ${elementStyles.buttons.hoverBg} !important;` : ''}${elementStyles.buttons.hoverColor ? `
+  color: ${elementStyles.buttons.hoverColor} !important;` : ''}`}${(elementStyles.buttons.primaryHoverType === 'solid' && colors.hover) ? `
+  border: 1px solid var(--color-hover) !important;` : (elementStyles.buttons.primaryHoverType === 'outlined' && colors.button) ? `
+  border: ${elementStyles.buttons.primaryHoverBorderWidth} ${elementStyles.buttons.primaryHoverBorderStyle} ${elementStyles.buttons.primaryHoverBorderColor === 'button' ? 'var(--color-button)' : elementStyles.buttons.primaryHoverBorderColor} !important;` : ''}
 }
-
-/* Secondary Buttons */
+` : ''}`;
+      }
+      
+      // Secondary Button Block
+      if (hasSecondaryButtonProperties) {
+        css += `/* Secondary Buttons */
 .ui.basic.button, .DiscountCodeContainer .DiscountCode-Input .ui.button,
 [data-testid="dont-cancel-btn"], .ModifyBooking .ModifyBooking-Column.left .actionButtons .rescheduleButton,
 .ModifyBooking .ModifyBooking-Column.left .actionButtons .contactButton,
 .TourPage-ContactGuide-link.ui.basic.button {${typography.buttonFont ? `
-  font-family: var(--font-button) !important;` : ''}
-  font-weight: normal !important;
-  color: ${elementStyles.buttons.secondaryColor || 'var(--color-button)'} !important;
-  background: ${elementStyles.buttons.secondaryBg} !important;
-  border-radius: ${elementStyles.buttons.borderRadius} !important;
-  transition: var(--transition) !important;
-  text-transform: var(--text-transform) !important;
-  border: ${elementStyles.buttons.border} !important;
+  font-family: var(--font-button) !important;` : ''}${typography.buttonFontWeight ? `
+  font-weight: ${typography.buttonFontWeight} !important;` : ''}${elementStyles.buttons.secondaryType === 'solid' ? (colors.button ? `
+  color: ${elementStyles.buttons.secondaryColor || '#ffffff'} !important;
+  background: var(--color-button) !important;` : '') : `${(elementStyles.buttons.secondaryColor || colors.button) ? `
+  color: ${elementStyles.buttons.secondaryColor || 'var(--color-button)'} !important;` : ''}${colors.background ? `
+  background: ${elementStyles.buttons.secondaryBg} !important;` : ''}`}${elementStyles.buttons.secondaryBorderRadius ? `
+  border-radius: ${elementStyles.buttons.secondaryBorderRadius} !important;` : ''}${(elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHoverColor) && elementStyles.buttons.secondaryTransition && elementStyles.buttons.secondaryTransition !== 'none' ? `
+  transition: ${elementStyles.buttons.secondaryTransition} !important;` : ''}${typography.textTransform && typography.textTransform !== 'none' ? `
+  text-transform: ${typography.textTransform} !important;` : ''}${typography.buttonLineHeight ? `
+  line-height: ${typography.buttonLineHeight} !important;` : ''}${typography.buttonFontSize ? `
+  font-size: ${typography.buttonFontSize} !important;` : ''}${colors.button ? `
+  border: ${elementStyles.buttons.secondaryType === 'solid' ? '1px solid var(--color-button)' : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || 'var(--color-button)'}`} !important;` : ''}
+}
+${elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHoverColor || (elementStyles.buttons.secondaryHoverType === 'solid' && colors.button) || (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
+.ui.basic.button:hover, .DiscountCodeContainer .DiscountCode-Input .ui.button:hover,
+[data-testid="dont-cancel-btn"]:hover, .ModifyBooking .ModifyBooking-Column.left .actionButtons .rescheduleButton:hover,
+.ModifyBooking .ModifyBooking-Column.left .actionButtons .contactButton:hover,
+.TourPage-ContactGuide-link.ui.basic.button:hover {${elementStyles.buttons.secondaryHoverType === 'solid' ? (colors.button ? `
+  color: ${elementStyles.buttons.secondaryHoverColor || '#ffffff'} !important;
+  background: var(--color-button) !important;` : '') : (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
+  color: ${elementStyles.buttons.secondaryHoverColor || 'var(--color-button)'} !important;` : `${elementStyles.buttons.secondaryHoverBg ? `
+  background-color: ${elementStyles.buttons.secondaryHoverBg} !important;` : ''}${elementStyles.buttons.secondaryHoverColor ? `
+  color: ${elementStyles.buttons.secondaryHoverColor} !important;` : ''}`}${(elementStyles.buttons.secondaryHoverType === 'solid' && colors.button) ? `
+  border: 1px solid var(--color-button) !important;` : (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
+  border: ${elementStyles.buttons.secondaryHoverBorderWidth} ${elementStyles.buttons.secondaryHoverBorderStyle} var(--color-button) !important;` : ''}
+}
+` : ''}
+`;
+      }
+    }
+
+    // Input Fields - only generate if properties are defined
+    if (elementStyles.inputs.backgroundColor || elementStyles.inputs.textColor || elementStyles.inputs.borderColor || elementStyles.inputs.borderRadius) {
+      css += `/* Input Fields */
+input[type='text'], input[type='email'], input[type='search'], input[type='password'] {${elementStyles.inputs.backgroundColor ? `
+  background-color: ${elementStyles.inputs.backgroundColor} !important;` : ''}${elementStyles.inputs.textColor ? `
+  color: ${elementStyles.inputs.textColor} !important;` : ''}${elementStyles.inputs.borderColor ? `
+  border: 1px solid ${elementStyles.inputs.borderColor} !important;` : ''}${elementStyles.inputs.borderRadius ? `
+  border-radius: ${elementStyles.inputs.borderRadius} !important;` : ''}
 }
 
 `;
+    }
 
-    // Input Fields
-    css += `/* Input Fields */
-input[type='text'], input[type='email'], input[type='search'], input[type='password'] {
-  background-color: ${elementStyles.inputs.backgroundColor} !important;
-  color: ${elementStyles.inputs.textColor} !important;
-  border: 1px solid ${elementStyles.inputs.borderColor} !important;
-  border-radius: ${elementStyles.inputs.borderRadius} !important;
+    // Modals - only generate if properties are defined
+    if (elementStyles.modals.backgroundColor || elementStyles.modals.textColor || elementStyles.modals.borderColor || elementStyles.modals.padding) {
+      css += `/* Modals */
+`;
+      
+      // .ui.modal > .content
+      if (elementStyles.modals.backgroundColor || elementStyles.modals.textColor) {
+        css += `.ui.modal > .content {${elementStyles.modals.backgroundColor ? `
+  background: ${elementStyles.modals.backgroundColor};` : ''}${elementStyles.modals.textColor ? `
+  color: ${elementStyles.modals.textColor};` : ''}
 }
 
 `;
-
-    // Modals
-    css += `/* Modals */
-.ui.modal > .content {
-  background: ${elementStyles.modals.backgroundColor};
-  color: ${elementStyles.modals.textColor};
-}
-
-.rescheduleModal, .contactModal, .confirm-email-modal {
-  background-color: ${elementStyles.modals.backgroundColor} !important;
-  border: 1px solid ${elementStyles.modals.borderColor} !important;
-  color: ${elementStyles.modals.textColor} !important;
-  padding: ${elementStyles.modals.padding} !important;
-}
-
-[data-testid="modal-main-overlay"] {
-  background-color: ${elementStyles.modals.backgroundColor} !important;
-  pointer-events: auto;
-  padding: ${elementStyles.modals.padding} !important;
+      }
+      
+      // Specific modal classes
+      if (elementStyles.modals.backgroundColor || elementStyles.modals.borderColor || elementStyles.modals.textColor || elementStyles.modals.padding) {
+        css += `.rescheduleModal, .contactModal, .confirm-email-modal {${elementStyles.modals.backgroundColor ? `
+  background-color: ${elementStyles.modals.backgroundColor} !important;` : ''}${elementStyles.modals.borderColor ? `
+  border: 1px solid ${elementStyles.modals.borderColor} !important;` : ''}${elementStyles.modals.textColor ? `
+  color: ${elementStyles.modals.textColor} !important;` : ''}${elementStyles.modals.padding ? `
+  padding: ${elementStyles.modals.padding} !important;` : ''}
 }
 
 `;
+      }
+      
+      // Modal overlay
+      if (elementStyles.modals.backgroundColor || elementStyles.modals.padding) {
+        css += `[data-testid="modal-main-overlay"] {${elementStyles.modals.backgroundColor ? `
+  background-color: ${elementStyles.modals.backgroundColor} !important;` : ''}
+  pointer-events: auto;${elementStyles.modals.padding ? `
+  padding: ${elementStyles.modals.padding} !important;` : ''}
+}
+
+`;
+      }
+    }
 
     // Modal Dark Mode
     if (elementStyles.modals.darkMode) {
@@ -671,15 +1153,19 @@ input[type='text'], input[type='email'], input[type='search'], input[type='passw
 `;
     }
     // Lists
-    css += `/* Lists */
-li {
-  background: ${elementStyles.lists.backgroundColor} !important;
-  padding: ${elementStyles.lists.padding};
-  margin: ${elementStyles.lists.margin};
-  list-style: ${elementStyles.lists.listStyle};
+    // Only generate Lists section if there are properties to declare
+    if (elementStyles.lists.backgroundColor || colors.background || elementStyles.lists.padding || elementStyles.lists.margin || (elementStyles.lists.listStyle && elementStyles.lists.listStyle !== 'Default')) {
+      css += `/* Lists */
+li {${elementStyles.lists.backgroundColor || colors.background ? `
+  background: ${elementStyles.lists.backgroundColor || 'var(--color-background)'} !important;` : ''}${elementStyles.lists.padding ? `
+  padding: ${elementStyles.lists.padding};` : ''}${elementStyles.lists.margin ? `
+  margin: ${elementStyles.lists.margin};` : ''}${elementStyles.lists.listStyle && elementStyles.lists.listStyle !== 'Default' ? `
+  list-style: ${elementStyles.lists.listStyle};` : ''}
 }
 
 `;
+    }
+
 
     // Mobile Styles
     if (typography.titleSizeMobile || typography.subtitleSizeMobile) {
@@ -693,6 +1179,28 @@ li {
     font-size: ${typography.subtitleSizeMobile} !important;
   }
 ` : ''}}
+
+`;
+    }
+
+    // Advanced CSS
+    if (advancedCSS.pluginMarginFix) {
+      css += `/* Advanced CSS - Plugin Margin Fix */
+#plugins-wrapper>div.ui.equal.height.grid.stackable.tour-page {
+  margin-top: 14px !important;
+}
+
+`;
+    }
+
+    if (advancedCSS.autoExpandDescription) {
+      css += `/* Advanced CSS - Auto-Expand Experience Description */
+.TourPage-About-description {
+  height: auto !important;
+}
+.TourPage-About-description:after, .TourPage-About-description-more {
+  display: none !important;
+}
 
 `;
     }
@@ -733,18 +1241,6 @@ li {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const loadLightTheme = () => {
-    setColors({
-      body: '#333333',
-      heading: '#1a1a1a',
-      button: '',
-      hover: '',
-      brand: '',
-      background: '#ffffff'
-    });
-    setIsDarkTheme(false);
-  };
-
   const loadDarkTheme = () => {
     setColors({
       body: '#ffffff',
@@ -759,9 +1255,9 @@ li {
 
   // Calculate summary stats
   const getSummaryStats = () => {
-    const fontCount = fonts.filter(f => f.name).length;
+    const fontCount = fonts.filter(f => f.name || f.googleLink || f.typekitUrl).length;
     const colorCount = Object.values(colors).filter(c => c).length;
-    const hasFonts = typography.enableFonts && fontCount > 0;
+    const hasFonts = fontCount > 0 || typography.bodyFont || typography.headingFont || typography.buttonFont;
     const hasColors = colorCount > 0;
     const hasTypography = typography.titleSize || typography.subtitleSize || typography.bodySize;
     const hasButtons = elementStyles.buttons.primaryColor || elementStyles.buttons.borderRadius !== '0px';
@@ -788,20 +1284,25 @@ li {
     { id: 'inputs', label: 'Input Fields', icon: '📋' },
     { id: 'modals', label: 'Modals', icon: '🪟' },
     { id: 'lists', label: 'Lists', icon: '📄' },
+    { id: 'advanced', label: 'Advanced CSS', icon: '🔧' },
     { id: 'custom', label: 'Custom CSS', icon: '⚙️' }
   ];
 
   return (
-    <div style={{
-      height: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      overflow: 'hidden'
-    }}>
+    <>
+      <style>{`
+        @import url("https://use.typekit.net/pdl3uhj.css");
+      `}</style>
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        fontFamily: 'soleil, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        overflow: 'hidden'
+      }}>
       {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #4860FF 0%, #2DC5B8 100%)',
           padding: '32px',
           color: 'white'
         }}>
@@ -834,11 +1335,11 @@ li {
                 padding: '16px 24px',
                 border: 'none',
                 background: activeSection === section.id ? 'white' : 'transparent',
-                color: activeSection === section.id ? '#667eea' : '#666',
+                color: activeSection === section.id ? '#3D57FF' : '#666',
                 fontWeight: activeSection === section.id ? '600' : '500',
                 cursor: 'pointer',
                 fontSize: '14px',
-                borderBottom: activeSection === section.id ? '3px solid #667eea' : '3px solid transparent',
+                borderBottom: activeSection === section.id ? '3px solid #3D57FF' : '3px solid transparent',
                 transition: 'all 0.2s',
                 whiteSpace: 'nowrap'
               }}
@@ -865,51 +1366,79 @@ li {
 
               {/* Theme Presets */}
               <div style={{ marginBottom: '32px' }}>
-                <h3 style={{ fontSize: '18px', color: '#667eea', marginBottom: '16px' }}>Quick Start Templates</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                  <button
-                    onClick={loadLightTheme}
-                    style={{
-                      padding: '20px',
-                      background: 'linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%)',
-                      border: '2px solid #667eea',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'transform 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>☀️</div>
-                    <div style={{ fontWeight: '600', fontSize: '16px', color: '#333', marginBottom: '4px' }}>Light Theme</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>Light background, dark text</div>
-                  </button>
-
+                <h3 style={{ fontSize: '16px', color: '#666', marginBottom: '12px', fontWeight: '500' }}>Quick Start Templates</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
                   <button
                     onClick={loadDarkTheme}
                     style={{
-                      padding: '20px',
-                      background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
-                      border: '2px solid #764ba2',
-                      borderRadius: '12px',
+                      padding: '16px',
+                      background: '#f9f9f9',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
                       cursor: 'pointer',
                       textAlign: 'left',
-                      transition: 'transform 0.2s'
+                      transition: 'background 0.2s'
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                    onMouseEnter={(e) => e.currentTarget.style.background = '#f0f0f0'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = '#f9f9f9'}
                   >
-                    <div style={{ fontSize: '32px', marginBottom: '8px' }}>🌙</div>
-                    <div style={{ fontWeight: '600', fontSize: '16px', color: '#fff', marginBottom: '4px' }}>Dark Theme</div>
-                    <div style={{ fontSize: '12px', color: '#ccc' }}>Dark background, light text</div>
+                    <div style={{ fontWeight: '600', fontSize: '14px', color: '#333', marginBottom: '4px' }}>Dark Theme</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Dark background</div>
+                  </button>
+
+                  <button
+                    style={{
+                      padding: '16px',
+                      background: '#f9f9f9',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'not-allowed',
+                      textAlign: 'left',
+                      opacity: 0.6
+                    }}
+                    disabled
+                  >
+                    <div style={{ fontWeight: '600', fontSize: '14px', color: '#333', marginBottom: '4px' }}>Template 2</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Coming soon</div>
+                  </button>
+
+                  <button
+                    style={{
+                      padding: '16px',
+                      background: '#f9f9f9',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'not-allowed',
+                      textAlign: 'left',
+                      opacity: 0.6
+                    }}
+                    disabled
+                  >
+                    <div style={{ fontWeight: '600', fontSize: '14px', color: '#333', marginBottom: '4px' }}>Template 3</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Coming soon</div>
+                  </button>
+
+                  <button
+                    style={{
+                      padding: '16px',
+                      background: '#f9f9f9',
+                      border: '1px solid #e0e0e0',
+                      borderRadius: '8px',
+                      cursor: 'not-allowed',
+                      textAlign: 'left',
+                      opacity: 0.6
+                    }}
+                    disabled
+                  >
+                    <div style={{ fontWeight: '600', fontSize: '14px', color: '#333', marginBottom: '4px' }}>Template 4</div>
+                    <div style={{ fontSize: '12px', color: '#999' }}>Coming soon</div>
                   </button>
                 </div>
               </div>
 
               {/* About This Tool */}
-              <div style={{ background: '#f0f4ff', padding: '24px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #667eea' }}>
-                <h3 style={{ fontSize: '18px', color: '#667eea', marginTop: 0, marginBottom: '16px' }}>📘 What This Tool Does</h3>
+              <div style={{ background: '#f0f4ff', padding: '24px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #3D57FF' }}>
+                <h3 style={{ fontSize: '18px', color: '#333333', marginTop: 0, marginBottom: '16px' }}>📘 What This Tool Does</h3>
                 <p style={{ margin: '0 0 12px 0', lineHeight: '1.6', color: '#333' }}>
                   This tool generates custom CSS stylesheets for <strong>AnyRoad booking plugins</strong>. 
                   Your CSS will control the appearance of:
@@ -942,6 +1471,89 @@ li {
                   </div>
                 </div>
               </div>
+
+              {/* Import Configuration */}
+              <div style={{ background: '#f9f9f9', padding: '24px', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+                <h3 style={{ fontSize: '18px', color: '#333333', marginTop: 0, marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '24px' }}>📥</span>
+                  <span>Import Existing Configuration</span>
+                </h3>
+                <p style={{ margin: '0 0 16px 0', fontSize: '14px', color: '#666', lineHeight: '1.5' }}>
+                  Have a CSS file previously exported from this tool? Paste it below to restore your settings and make updates.
+                </p>
+                
+                <textarea
+                  value={importCSS}
+                  onChange={(e) => setImportCSS(e.target.value)}
+                  placeholder="Paste your exported CSS here..."
+                  style={{
+                    width: '100%',
+                    minHeight: '150px',
+                    padding: '12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    marginBottom: '12px'
+                  }}
+                />
+                
+                {importStatus.message && (
+                  <div style={{
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    marginBottom: '12px',
+                    background: importStatus.type === 'success' ? '#d4edda' : 
+                               importStatus.type === 'warning' ? '#fff3cd' : '#f8d7da',
+                    border: `1px solid ${importStatus.type === 'success' ? '#28a745' : 
+                                        importStatus.type === 'warning' ? '#ffc107' : '#dc3545'}`,
+                    color: importStatus.type === 'success' ? '#155724' : 
+                           importStatus.type === 'warning' ? '#856404' : '#721c24',
+                    fontSize: '14px'
+                  }}>
+                    {importStatus.type === 'success' && '✓ '}
+                    {importStatus.type === 'warning' && '⚠ '}
+                    {importStatus.type === 'error' && '✕ '}
+                    {importStatus.message}
+                  </div>
+                )}
+                
+                <button
+                  onClick={() => parseAndImportCSS(importCSS)}
+                  style={{
+                    padding: '12px 24px',
+                    background: 'linear-gradient(135deg, #3D57FF 0%, #5a72ff 100%)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    transition: 'transform 0.2s, box-shadow 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(61, 87, 255, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                >
+                  <Download size={16} />
+                  Import Configuration
+                </button>
+                
+                <p style={{ margin: '16px 0 0 0', fontSize: '12px', color: '#888', lineHeight: '1.5' }}>
+                  <strong>Note:</strong> Importing will populate form fields with values found in the CSS. 
+                  Font family names will be extracted, but you may need to re-add font sources (Google Fonts URLs, Typekit, or custom files) if they weren't included in the export.
+                </p>
+              </div>
             </div>
           )}
 
@@ -956,12 +1568,12 @@ li {
                 padding: '16px',
                 borderRadius: '8px',
                 marginBottom: '24px',
-                border: '1px solid #667eea',
+                border: '1px solid #3D57FF',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 color: '#555'
               }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#667eea' }}>💡 About Fonts</div>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3D57FF' }}>💡 About Fonts</div>
                 <div>Your fonts will be used for <strong>Body Text</strong>, <strong>Headings</strong>, and <strong>Buttons</strong> throughout the booking experience.</div>
               </div>
 
@@ -978,7 +1590,7 @@ li {
                   onClick={addFont}
                   style={{
                     padding: '10px 20px',
-                        background: '#667eea',
+                        background: '#3D57FF',
                         color: 'white',
                         border: 'none',
                         borderRadius: '8px',
@@ -1068,7 +1680,7 @@ li {
                           }}
                         />
                         <small style={{ display: 'block', marginTop: '6px', color: '#666', fontSize: '12px' }}>
-                          Get this from <a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer" style={{ color: '#667eea' }}>fonts.google.com</a> - select "@import" and copy the URL from inside url('...')
+                          Get this from <a href="https://fonts.google.com" target="_blank" rel="noopener noreferrer" style={{ color: '#3D57FF' }}>fonts.google.com</a> - select "@import" and copy the URL from inside url('...')
                         </small>
                       </div>
                       
@@ -1120,7 +1732,7 @@ li {
                           alignItems: 'center',
                           marginBottom: '8px' 
                         }}>
-                          <label style={{ fontWeight: '600', color: '#667eea' }}>
+                          <label style={{ fontWeight: '600', color: '#3D57FF' }}>
                             Font Families <span style={{ color: '#d32f2f' }}>*</span>
                           </label>
                           <button
@@ -1130,9 +1742,9 @@ li {
                             }}
                             style={{
                               padding: '4px 12px',
-                              background: '#667eea',
-                              color: 'white',
-                              border: 'none',
+                              background: 'white',
+                              color: '#3D57FF',
+                              border: '1px solid #3D57FF',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               fontSize: '12px'
@@ -1178,7 +1790,7 @@ li {
                                     style={{
                                       width: '100%',
                                       padding: '10px',
-                                      border: '2px solid #667eea',
+                                      border: '2px solid #3D57FF',
                                       borderRadius: '6px',
                                       fontSize: '14px',
                                       background: familyName ? '#e8f5e9' : 'white'
@@ -1265,7 +1877,7 @@ li {
                                   }}
                                   style={{
                                     padding: '10px 16px',
-                                    background: '#667eea',
+                                    background: '#3D57FF',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '6px',
@@ -1286,10 +1898,10 @@ li {
                             onClick={() => updateFont(font.id, 'googleFamilies', [{ name: '', fallback: 'Arial' }])}
                             style={{
                               padding: '16px',
-                              border: '2px dashed #667eea',
+                              border: '2px dashed #3D57FF',
                               borderRadius: '6px',
                               textAlign: 'center',
-                              color: '#667eea',
+                              color: '#3D57FF',
                               cursor: 'pointer',
                               fontSize: '14px'
                             }}
@@ -1344,7 +1956,7 @@ li {
 
                       <div style={{ marginBottom: '16px' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                          <label style={{ fontWeight: '600', color: '#667eea', fontSize: '14px' }}>
+                          <label style={{ fontWeight: '600', color: '#3D57FF', fontSize: '14px' }}>
                             Font Families <span style={{ color: '#d32f2f' }}>*</span>
                           </label>
                           <button
@@ -1354,9 +1966,9 @@ li {
                             }}
                             style={{
                               padding: '6px 12px',
-                              background: '#667eea',
-                              color: 'white',
-                              border: 'none',
+                              background: 'white',
+                              color: '#3D57FF',
+                              border: '1px solid #3D57FF',
                               borderRadius: '6px',
                               cursor: 'pointer',
                               fontSize: '12px',
@@ -1412,7 +2024,7 @@ li {
                                     style={{
                                       width: '100%',
                                       padding: '10px',
-                                      border: '2px solid #667eea',
+                                      border: '2px solid #3D57FF',
                                       borderRadius: '6px',
                                       fontSize: '14px',
                                       background: familyName && familyName.trim() ? '#e8f5e9' : 'white'
@@ -1489,7 +2101,7 @@ li {
                                   }}
                                   style={{
                                     padding: '10px 16px',
-                                    background: '#667eea',
+                                    background: '#3D57FF',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '6px',
@@ -1583,7 +2195,7 @@ li {
                           onClick={() => updateFont(font.id, 'fallback', suggestFallback(font.name))}
                           style={{
                             padding: '10px 16px',
-                            background: '#667eea',
+                            background: '#3D57FF',
                             color: 'white',
                             border: 'none',
                             borderRadius: '6px',
@@ -1615,9 +2227,9 @@ li {
                         <button
                           onClick={() => addFontFile(font.id)}
                           style={{
-                            background: '#764ba2',
-                            color: 'white',
-                            border: 'none',
+                            background: 'white',
+                            color: '#3D57FF',
+                            border: '1px solid #3D57FF',
                             borderRadius: '6px',
                             padding: '6px 12px',
                             cursor: 'pointer',
@@ -1777,12 +2389,12 @@ li {
                     style={{
                       width: '50px',
                       height: '28px',
-                      background: isDarkTheme ? '#667eea' : '#ddd',
+                      background: isDarkTheme ? '#3D57FF' : '#ddd',
                       borderRadius: '14px',
                       position: 'relative',
                       cursor: 'pointer',
                       transition: 'background 0.3s',
-                      border: isDarkTheme ? '2px solid #667eea' : '2px solid #ccc'
+                      border: isDarkTheme ? '2px solid #3D57FF' : '2px solid #ccc'
                     }}
                   >
                     <div style={{
@@ -1828,12 +2440,12 @@ li {
                 padding: '16px',
                 borderRadius: '8px',
                 marginBottom: '24px',
-                border: '1px solid #667eea',
+                border: '1px solid #3D57FF',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 color: '#555'
               }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#667eea' }}>💡 About Colors</div>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3D57FF' }}>💡 About Colors</div>
                 <div>These colors will be used across the entire booking experience. Leave fields blank to use plugin defaults.</div>
               </div>
               
@@ -1841,10 +2453,10 @@ li {
               <div style={{ marginBottom: '32px' }}>
                 <h3 style={{ 
                   fontSize: '18px', 
-                  color: '#667eea', 
+                  color: '#3D57FF', 
                   marginBottom: '16px',
                   paddingBottom: '8px',
-                  borderBottom: '2px solid #667eea'
+                  borderBottom: '2px solid #3D57FF'
                 }}>
                   Text Colors
                 </h3>
@@ -2011,10 +2623,10 @@ li {
               <div style={{ marginBottom: '32px' }}>
                 <h3 style={{ 
                   fontSize: '18px', 
-                  color: '#764ba2', 
+                  color: '#3D57FF', 
                   marginBottom: '16px',
                   paddingBottom: '8px',
-                  borderBottom: '2px solid #764ba2'
+                  borderBottom: '2px solid #3D57FF'
                 }}>
                   Elements
                 </h3>
@@ -2378,18 +2990,18 @@ li {
                 padding: '16px',
                 borderRadius: '8px',
                 marginBottom: '16px',
-                border: '1px solid #667eea',
+                border: '1px solid #3D57FF',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 color: '#555'
               }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#667eea' }}>💡 Size Fields</div>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3D57FF' }}>💡 Size Fields</div>
                 <div>Leave size fields blank to use plugin defaults.</div>
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Headings</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Headings</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
@@ -2419,7 +3031,7 @@ li {
                     </select>
                     {getAllFontFamilies().length === 0 && (
                       <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
-                        Add fonts in <span style={{ color: '#667eea', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
+                        Add fonts in <span style={{ color: '#3D57FF', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
                       </small>
                     )}
                   </div>
@@ -2602,7 +3214,7 @@ li {
 
 
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Body Text</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Body Text</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
@@ -2632,9 +3244,84 @@ li {
                     </select>
                     {getAllFontFamilies().length === 0 && (
                       <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
-                        Add fonts in <span style={{ color: '#667eea', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
+                        Add fonts in <span style={{ color: '#3D57FF', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
                       </small>
                     )}
+                  </div>
+
+                  <div style={{ marginBottom: '16px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Font Weight
+                      </label>
+                      <select
+                        value={typography.bodyFontWeight}
+                        onChange={(e) => setTypography({ ...typography, bodyFontWeight: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          background: 'white'
+                        }}
+                      >
+                        <option value="">Default</option>
+                        <option value="100">100 - Thin</option>
+                        <option value="200">200 - Extra Light</option>
+                        <option value="300">300 - Light</option>
+                        <option value="400">400 - Normal</option>
+                        <option value="500">500 - Medium</option>
+                        <option value="600">600 - Semi Bold</option>
+                        <option value="700">700 - Bold</option>
+                        <option value="800">800 - Extra Bold</option>
+                        <option value="900">900 - Black</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Text Transform
+                      </label>
+                      <select
+                        value={typography.bodyTextTransform}
+                        onChange={(e) => setTypography({ ...typography, bodyTextTransform: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          background: 'white'
+                        }}
+                      >
+                        <option value="">Default</option>
+                        <option value="none">None</option>
+                        <option value="uppercase">UPPERCASE</option>
+                        <option value="lowercase">lowercase</option>
+                        <option value="capitalize">Capitalize</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Line Height
+                    </label>
+                    <input
+                      type="text"
+                      value={typography.bodyLineHeight}
+                      onChange={(e) => setTypography({ ...typography, bodyLineHeight: e.target.value })}
+                      placeholder="1.5"
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
                   </div>
 
                   <div>
@@ -2661,7 +3348,7 @@ li {
 
 
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Buttons</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Buttons</h3>
                   
                   <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
@@ -2691,18 +3378,73 @@ li {
                     </select>
                     {getAllFontFamilies().length === 0 && (
                       <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
-                        Add fonts in <span style={{ color: '#667eea', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
+                        Add fonts in <span style={{ color: '#3D57FF', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
                       </small>
                     )}
                   </div>
 
-                  <div>
+                  <div style={{ marginBottom: '16px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Font Weight
+                      </label>
+                      <select
+                        value={typography.buttonFontWeight}
+                        onChange={(e) => setTypography({ ...typography, buttonFontWeight: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          background: 'white'
+                        }}
+                      >
+                        <option value="">Default</option>
+                        <option value="100">100 - Thin</option>
+                        <option value="200">200 - Extra Light</option>
+                        <option value="300">300 - Light</option>
+                        <option value="400">400 - Normal</option>
+                        <option value="500">500 - Medium</option>
+                        <option value="600">600 - Semi Bold</option>
+                        <option value="700">700 - Bold</option>
+                        <option value="800">800 - Extra Bold</option>
+                        <option value="900">900 - Black</option>
+                      </select>
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Text Transform
+                      </label>
+                      <select
+                        value={typography.textTransform}
+                        onChange={(e) => setTypography({ ...typography, textTransform: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          background: 'white'
+                        }}
+                      >
+                        <option value="none">None</option>
+                        <option value="uppercase">Uppercase</option>
+                        <option value="lowercase">Lowercase</option>
+                        <option value="capitalize">Capitalize</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Text Transform
+                      Line Height
                     </label>
-                    <select
-                      value={typography.textTransform}
-                      onChange={(e) => setTypography({ ...typography, textTransform: e.target.value })}
+                    <input
+                      type="text"
+                      value={typography.buttonLineHeight}
+                      onChange={(e) => setTypography({ ...typography, buttonLineHeight: e.target.value })}
+                      placeholder="1"
                       style={{
                         width: '100%',
                         minWidth: 0,
@@ -2712,17 +3454,33 @@ li {
                         borderRadius: '6px',
                         fontSize: '14px'
                       }}
-                    >
-                      <option value="none">None</option>
-                      <option value="uppercase">Uppercase</option>
-                      <option value="lowercase">Lowercase</option>
-                      <option value="capitalize">Capitalize</option>
-                    </select>
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Font Size
+                    </label>
+                    <input
+                      type="text"
+                      value={typography.buttonFontSize}
+                      onChange={(e) => setTypography({ ...typography, buttonFontSize: e.target.value })}
+                      placeholder="14px"
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    />
                   </div>
               </div>
 
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Links</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Links</h3>
                   
                   <div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: '600', color: '#555' }}>
@@ -2754,7 +3512,64 @@ li {
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Primary Button</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Primary Button</h3>
+                  
+                  {/* Live Preview */}
+                  <div style={{ 
+                    marginBottom: '24px', 
+                    padding: '24px', 
+                    background: '#f8f9fa', 
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Live Preview
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        style={{
+                          fontFamily: typography.buttonFont ? buildFontStack(typography.buttonFont, getFontFallback(typography.buttonFont)) : 'inherit',
+                          fontWeight: typography.buttonFontWeight || 'normal',
+                          color: elementStyles.buttons.primaryType === 'outlined' ? (elementStyles.buttons.primaryColor || (colors.button ? colors.button : '#3D57FF')) : (elementStyles.buttons.primaryColor || '#ffffff'),
+                          background: elementStyles.buttons.primaryType === 'outlined' ? 'transparent' : (colors.button || '#3D57FF'),
+                          borderRadius: elementStyles.buttons.primaryBorderRadius || '8px',
+                          textTransform: typography.textTransform !== 'none' ? typography.textTransform : 'none',
+                          lineHeight: typography.buttonLineHeight || 'normal',
+                          fontSize: typography.buttonFontSize || '14px',
+                          border: elementStyles.buttons.primaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.primaryBorderWidth} ${elementStyles.buttons.primaryBorderStyle} ${elementStyles.buttons.primaryBorderColor === 'button' ? (colors.button || '#3D57FF') : elementStyles.buttons.primaryBorderColor}`,
+                          padding: '10px 20px',
+                          cursor: 'pointer',
+                          ...(elementStyles.buttons.primaryTransition && elementStyles.buttons.primaryTransition !== 'none' ? { transition: elementStyles.buttons.primaryTransition } : {})
+                        }}
+                        onMouseEnter={(e) => {
+                          if (elementStyles.buttons.primaryHoverType === 'outlined' && colors.button) {
+                            e.target.style.backgroundColor = 'transparent';
+                            e.target.style.color = elementStyles.buttons.hoverColor || (colors.button || '#3D57FF');
+                            e.target.style.border = `${elementStyles.buttons.primaryHoverBorderWidth} ${elementStyles.buttons.primaryHoverBorderStyle} ${elementStyles.buttons.primaryHoverBorderColor === 'button' ? (colors.button || '#3D57FF') : elementStyles.buttons.primaryHoverBorderColor}`;
+                          } else if (elementStyles.buttons.primaryHoverType === 'solid' && colors.hover) {
+                            e.target.style.backgroundColor = colors.hover || '#3D57FF';
+                            e.target.style.color = elementStyles.buttons.hoverColor || '#ffffff';
+                            e.target.style.border = `1px solid ${colors.hover}`;
+                          } else {
+                            if (elementStyles.buttons.hoverBg) {
+                              e.target.style.backgroundColor = elementStyles.buttons.hoverBg;
+                            }
+                            if (elementStyles.buttons.hoverColor) {
+                              e.target.style.color = elementStyles.buttons.hoverColor;
+                            }
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.color = elementStyles.buttons.primaryType === 'outlined' ? (elementStyles.buttons.primaryColor || (colors.button ? colors.button : '#3D57FF')) : (elementStyles.buttons.primaryColor || '#ffffff');
+                          e.target.style.backgroundColor = elementStyles.buttons.primaryType === 'outlined' ? 'transparent' : (colors.button || '#3D57FF');
+                          e.target.style.border = elementStyles.buttons.primaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.primaryBorderWidth} ${elementStyles.buttons.primaryBorderStyle} ${elementStyles.buttons.primaryBorderColor === 'button' ? (colors.button || '#3D57FF') : elementStyles.buttons.primaryBorderColor}`;
+                        }}
+                      >
+                        Primary Button
+                      </button>
+                      <span style={{ fontSize: '12px', color: '#999' }}>Hover to see hover state</span>
+                    </div>
+                  </div>
                   
                   {/* Button Type Selector */}
                   <div style={{ marginBottom: '24px' }}>
@@ -2777,7 +3592,7 @@ li {
                         style={{
                           flex: 1,
                           padding: '8px 16px',
-                          background: elementStyles.buttons.primaryType === 'solid' ? '#667eea' : 'transparent',
+                          background: elementStyles.buttons.primaryType === 'solid' ? '#3D57FF' : 'transparent',
                           color: elementStyles.buttons.primaryType === 'solid' ? 'white' : '#6b7280',
                           border: 'none',
                           borderRadius: '6px',
@@ -2798,7 +3613,7 @@ li {
                         style={{
                           flex: 1,
                           padding: '8px 16px',
-                          background: elementStyles.buttons.primaryType === 'outlined' ? '#667eea' : 'transparent',
+                          background: elementStyles.buttons.primaryType === 'outlined' ? '#3D57FF' : 'transparent',
                           color: elementStyles.buttons.primaryType === 'outlined' ? 'white' : '#6b7280',
                           border: 'none',
                           borderRadius: '6px',
@@ -2926,8 +3741,8 @@ li {
                             marginTop: '8px',
                             padding: '6px 12px',
                             background: 'transparent',
-                            color: '#667eea',
-                            border: '1px solid #667eea',
+                            color: '#3D57FF',
+                            border: '1px solid #3D57FF',
                             borderRadius: '4px',
                             cursor: 'pointer',
                             fontSize: '11px',
@@ -3041,8 +3856,8 @@ li {
                               marginTop: '8px',
                               padding: '6px 12px',
                               background: 'transparent',
-                              color: '#667eea',
-                              border: '1px solid #667eea',
+                              color: '#3D57FF',
+                              border: '1px solid #3D57FF',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               fontSize: '11px',
@@ -3072,6 +3887,8 @@ li {
                       placeholder="e.g., 8px or 50%"
                       style={{
                         width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -3080,63 +3897,78 @@ li {
                     />
                   </div>
 
-                  {/* Hover Type Selector */}
-                  <div style={{ marginTop: '24px', marginBottom: '24px', paddingTop: '24px', borderTop: '2px solid #e0e0e0' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Hover Effect Type
-                    </label>
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '0', 
-                      background: '#e5e7eb',
-                      borderRadius: '8px',
-                      padding: '4px',
-                      position: 'relative'
-                    }}>
-                      <button
-                        onClick={() => setElementStyles({
-                          ...elementStyles,
-                          buttons: { ...elementStyles.buttons, primaryHoverType: 'solid' }
-                        })}
-                        style={{
-                          flex: 1,
-                          padding: '8px 16px',
-                          background: elementStyles.buttons.primaryHoverType === 'solid' ? '#667eea' : 'transparent',
-                          color: elementStyles.buttons.primaryHoverType === 'solid' ? 'white' : '#6b7280',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease',
-                          zIndex: 1
-                        }}
-                      >
-                        Solid
-                      </button>
-                      <button
-                        onClick={() => setElementStyles({
-                          ...elementStyles,
-                          buttons: { ...elementStyles.buttons, primaryHoverType: 'outlined' }
-                        })}
-                        style={{
-                          flex: 1,
-                          padding: '8px 16px',
-                          background: elementStyles.buttons.primaryHoverType === 'outlined' ? '#667eea' : 'transparent',
-                          color: elementStyles.buttons.primaryHoverType === 'outlined' ? 'white' : '#6b7280',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease',
-                          zIndex: 1
-                        }}
-                      >
-                        Outlined
-                      </button>
+                  {/* Hover State Configuration */}
+                  <div style={{ 
+                    marginTop: '32px', 
+                    padding: '20px', 
+                    background: 'linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%)', 
+                    borderRadius: '12px',
+                    border: '2px solid #e0e7ff'
+                  }}>
+                    <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '18px' }}>✨</span>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Hover State
+                      </h4>
                     </div>
-                  </div>
+
+                    {/* Hover Type Selector */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Hover Effect Type
+                      </label>
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '0', 
+                        background: '#e5e7eb',
+                        borderRadius: '8px',
+                        padding: '4px',
+                        position: 'relative'
+                      }}>
+                        <button
+                          onClick={() => setElementStyles({
+                            ...elementStyles,
+                            buttons: { ...elementStyles.buttons, primaryHoverType: 'solid' }
+                          })}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            background: elementStyles.buttons.primaryHoverType === 'solid' ? '#3D57FF' : 'transparent',
+                            color: elementStyles.buttons.primaryHoverType === 'solid' ? 'white' : '#6b7280',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            transition: 'all 0.2s ease',
+                            zIndex: 1
+                          }}
+                        >
+                          Solid
+                        </button>
+                        <button
+                          onClick={() => setElementStyles({
+                            ...elementStyles,
+                            buttons: { ...elementStyles.buttons, primaryHoverType: 'outlined' }
+                          })}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            background: elementStyles.buttons.primaryHoverType === 'outlined' ? '#3D57FF' : 'transparent',
+                            color: elementStyles.buttons.primaryHoverType === 'outlined' ? 'white' : '#6b7280',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            transition: 'all 0.2s ease',
+                            zIndex: 1
+                          }}
+                        >
+                          Outlined
+                        </button>
+                      </div>
+                    </div>
 
                   {/* Hover Text Color - always shown */}
                   <div style={{ marginBottom: '16px' }}>
@@ -3250,8 +4082,8 @@ li {
                             marginTop: '8px',
                             padding: '6px 12px',
                             background: 'transparent',
-                            color: '#667eea',
-                            border: '1px solid #667eea',
+                            color: '#3D57FF',
+                            border: '1px solid #3D57FF',
                             borderRadius: '4px',
                             cursor: 'pointer',
                             fontSize: '11px',
@@ -3363,8 +4195,8 @@ li {
                               marginTop: '8px',
                               padding: '6px 12px',
                               background: 'transparent',
-                              color: '#667eea',
-                              border: '1px solid #667eea',
+                              color: '#3D57FF',
+                              border: '1px solid #3D57FF',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               fontSize: '11px',
@@ -3378,10 +4210,99 @@ li {
                       </div>
                     </>
                   )}
+
+                  {/* Hover Transition */}
+                  <div style={{ marginTop: '24px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Hover Transition
+                    </label>
+                    <select
+                      value={elementStyles.buttons.primaryTransition}
+                      onChange={(e) => setElementStyles({
+                        ...elementStyles,
+                        buttons: { ...elementStyles.buttons, primaryTransition: e.target.value }
+                      })}
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="none">None</option>
+                      <option value="all 0.15s ease">Fast (0.15s)</option>
+                      <option value="all 0.2s ease">Quick (0.2s)</option>
+                      <option value="all 0.3s ease">Normal (0.3s)</option>
+                      <option value="all 0.4s ease">Smooth (0.4s)</option>
+                      <option value="all 0.5s ease">Slow (0.5s)</option>
+                      <option value="all 0.3s ease-in-out">Ease In-Out (0.3s)</option>
+                      <option value="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)">Material (0.3s)</option>
+                    </select>
+                  </div>
+                  </div>{/* End Hover State Container */}
                 </div>
 
                 <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Secondary Button</h3>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Secondary Button</h3>
+                  
+                  {/* Live Preview */}
+                  <div style={{ 
+                    marginBottom: '24px', 
+                    padding: '24px', 
+                    background: '#f8f9fa', 
+                    borderRadius: '8px',
+                    border: '1px solid #e0e0e0'
+                  }}>
+                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Live Preview
+                    </div>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        style={{
+                          fontFamily: typography.buttonFont ? buildFontStack(typography.buttonFont, getFontFallback(typography.buttonFont)) : 'inherit',
+                          fontWeight: typography.buttonFontWeight || 'normal',
+                          color: elementStyles.buttons.secondaryType === 'solid' ? (elementStyles.buttons.secondaryColor || '#ffffff') : (elementStyles.buttons.secondaryColor || (colors.button ? colors.button : '#3D57FF')),
+                          background: elementStyles.buttons.secondaryType === 'solid' ? (colors.button || '#3D57FF') : (colors.background || 'transparent'),
+                          borderRadius: elementStyles.buttons.secondaryBorderRadius || '8px',
+                          textTransform: typography.textTransform !== 'none' ? typography.textTransform : 'none',
+                          lineHeight: typography.buttonLineHeight || 'normal',
+                          fontSize: typography.buttonFontSize || '14px',
+                          border: elementStyles.buttons.secondaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || (colors.button ? colors.button : '#3D57FF')}`,
+                          padding: '10px 20px',
+                          cursor: 'pointer',
+                          ...(elementStyles.buttons.secondaryTransition && elementStyles.buttons.secondaryTransition !== 'none' ? { transition: elementStyles.buttons.secondaryTransition } : {})
+                        }}
+                        onMouseEnter={(e) => {
+                          if (elementStyles.buttons.secondaryHoverType === 'solid' && colors.button) {
+                            e.target.style.backgroundColor = colors.button || '#3D57FF';
+                            e.target.style.color = elementStyles.buttons.secondaryHoverColor || '#ffffff';
+                            e.target.style.border = `1px solid ${colors.button}`;
+                          } else if (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) {
+                            e.target.style.color = elementStyles.buttons.secondaryHoverColor || (colors.button || '#3D57FF');
+                            e.target.style.border = `${elementStyles.buttons.secondaryHoverBorderWidth} ${elementStyles.buttons.secondaryHoverBorderStyle} ${colors.button}`;
+                          } else {
+                            if (elementStyles.buttons.secondaryHoverBg) {
+                              e.target.style.backgroundColor = elementStyles.buttons.secondaryHoverBg;
+                            }
+                            if (elementStyles.buttons.secondaryHoverColor) {
+                              e.target.style.color = elementStyles.buttons.secondaryHoverColor;
+                            }
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          e.target.style.color = elementStyles.buttons.secondaryType === 'solid' ? (elementStyles.buttons.secondaryColor || '#ffffff') : (elementStyles.buttons.secondaryColor || (colors.button ? colors.button : '#3D57FF'));
+                          e.target.style.backgroundColor = elementStyles.buttons.secondaryType === 'solid' ? (colors.button || '#3D57FF') : (colors.background || 'transparent');
+                          e.target.style.border = elementStyles.buttons.secondaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || (colors.button ? colors.button : '#3D57FF')}`;
+                        }}
+                      >
+                        Secondary Button
+                      </button>
+                      <span style={{ fontSize: '12px', color: '#999' }}>Hover to see hover state</span>
+                    </div>
+                  </div>
                   
                   {/* Button Type Selector */}
                   <div style={{ marginBottom: '24px' }}>
@@ -3404,7 +4325,7 @@ li {
                         style={{
                           flex: 1,
                           padding: '8px 16px',
-                          background: elementStyles.buttons.secondaryType === 'solid' ? '#667eea' : 'transparent',
+                          background: elementStyles.buttons.secondaryType === 'solid' ? '#3D57FF' : 'transparent',
                           color: elementStyles.buttons.secondaryType === 'solid' ? 'white' : '#6b7280',
                           border: 'none',
                           borderRadius: '6px',
@@ -3425,7 +4346,7 @@ li {
                         style={{
                           flex: 1,
                           padding: '8px 16px',
-                          background: elementStyles.buttons.secondaryType === 'outlined' ? '#667eea' : 'transparent',
+                          background: elementStyles.buttons.secondaryType === 'outlined' ? '#3D57FF' : 'transparent',
                           color: elementStyles.buttons.secondaryType === 'outlined' ? 'white' : '#6b7280',
                           border: 'none',
                           borderRadius: '6px',
@@ -3450,7 +4371,7 @@ li {
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={(elementStyles.buttons.secondaryColor || colors.button || '#000000')}
+                          value={(elementStyles.buttons.secondaryColor || (elementStyles.buttons.secondaryType === 'solid' ? '#ffffff' : colors.button) || '#000000')}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, secondaryColor: e.target.value }
@@ -3461,13 +4382,13 @@ li {
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: (elementStyles.buttons.secondaryColor || colors.button) ? 1 : 0,
+                            opacity: (elementStyles.buttons.secondaryColor || elementStyles.buttons.secondaryType === 'solid' || colors.button) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
-                        {!(elementStyles.buttons.secondaryColor || colors.button) && (
+                        {!(elementStyles.buttons.secondaryColor || elementStyles.buttons.secondaryType === 'solid' || colors.button) && (
                           <div style={{
                             width: '100%',
                             height: '100%',
@@ -3494,9 +4415,11 @@ li {
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, secondaryColor: e.target.value }
                           })}
-                          placeholder={colors.button || '#000000'}
+                          placeholder={elementStyles.buttons.secondaryType === 'solid' ? '#ffffff' : (colors.button || '#000000')}
                           style={{
                             width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
                             padding: '10px',
                             border: '1px solid #ddd',
                             borderRadius: '6px',
@@ -3509,7 +4432,7 @@ li {
                           color: '#999',
                           marginTop: '4px'
                         }}>
-                          {elementStyles.buttons.secondaryColor ? 'Custom override' : `Default: ${colors.button || 'button color'}`}
+                          {elementStyles.buttons.secondaryColor ? 'Custom override' : `Default: ${elementStyles.buttons.secondaryType === 'solid' ? '#ffffff' : (colors.button || 'button color')}`}
                         </div>
                       </div>
                     </div>
@@ -3562,8 +4485,8 @@ li {
                             marginTop: '8px',
                             padding: '6px 12px',
                             background: 'transparent',
-                            color: '#667eea',
-                            border: '1px solid #667eea',
+                            color: '#3D57FF',
+                            border: '1px solid #3D57FF',
                             borderRadius: '4px',
                             cursor: 'pointer',
                             fontSize: '11px',
@@ -3685,6 +4608,8 @@ li {
                               placeholder={colors.button || '#000000'}
                               style={{
                                 width: '100%',
+                                minWidth: 0,
+                                boxSizing: 'border-box',
                                 padding: '10px',
                                 border: '1px solid #ddd',
                                 borderRadius: '6px',
@@ -3720,6 +4645,8 @@ li {
                       placeholder="e.g., 8px or 50%"
                       style={{
                         width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
                         padding: '10px',
                         border: '1px solid #ddd',
                         borderRadius: '6px',
@@ -3728,63 +4655,78 @@ li {
                     />
                   </div>
 
-                  {/* Hover Type Selector */}
-                  <div style={{ marginTop: '24px', marginBottom: '24px', paddingTop: '24px', borderTop: '2px solid #e0e0e0' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Hover Effect Type
-                    </label>
-                    <div style={{ 
-                      display: 'flex', 
-                      gap: '0', 
-                      background: '#e5e7eb',
-                      borderRadius: '8px',
-                      padding: '4px',
-                      position: 'relative'
-                    }}>
-                      <button
-                        onClick={() => setElementStyles({
-                          ...elementStyles,
-                          buttons: { ...elementStyles.buttons, secondaryHoverType: 'solid' }
-                        })}
-                        style={{
-                          flex: 1,
-                          padding: '8px 16px',
-                          background: elementStyles.buttons.secondaryHoverType === 'solid' ? '#667eea' : 'transparent',
-                          color: elementStyles.buttons.secondaryHoverType === 'solid' ? 'white' : '#6b7280',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease',
-                          zIndex: 1
-                        }}
-                      >
-                        Solid
-                      </button>
-                      <button
-                        onClick={() => setElementStyles({
-                          ...elementStyles,
-                          buttons: { ...elementStyles.buttons, secondaryHoverType: 'outlined' }
-                        })}
-                        style={{
-                          flex: 1,
-                          padding: '8px 16px',
-                          background: elementStyles.buttons.secondaryHoverType === 'outlined' ? '#667eea' : 'transparent',
-                          color: elementStyles.buttons.secondaryHoverType === 'outlined' ? 'white' : '#6b7280',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease',
-                          zIndex: 1
-                        }}
-                      >
-                        Outlined
-                      </button>
+                  {/* Hover State Configuration */}
+                  <div style={{ 
+                    marginTop: '32px', 
+                    padding: '20px', 
+                    background: 'linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%)', 
+                    borderRadius: '12px',
+                    border: '2px solid #e0e7ff'
+                  }}>
+                    <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '18px' }}>✨</span>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Hover State
+                      </h4>
                     </div>
-                  </div>
+
+                    {/* Hover Type Selector */}
+                    <div style={{ marginBottom: '24px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Hover Effect Type
+                      </label>
+                      <div style={{ 
+                        display: 'flex', 
+                        gap: '0', 
+                        background: '#e5e7eb',
+                        borderRadius: '8px',
+                        padding: '4px',
+                        position: 'relative'
+                      }}>
+                        <button
+                          onClick={() => setElementStyles({
+                            ...elementStyles,
+                            buttons: { ...elementStyles.buttons, secondaryHoverType: 'solid' }
+                          })}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            background: elementStyles.buttons.secondaryHoverType === 'solid' ? '#3D57FF' : 'transparent',
+                            color: elementStyles.buttons.secondaryHoverType === 'solid' ? 'white' : '#6b7280',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            transition: 'all 0.2s ease',
+                            zIndex: 1
+                          }}
+                        >
+                          Solid
+                        </button>
+                        <button
+                          onClick={() => setElementStyles({
+                            ...elementStyles,
+                            buttons: { ...elementStyles.buttons, secondaryHoverType: 'outlined' }
+                          })}
+                          style={{
+                            flex: 1,
+                            padding: '8px 16px',
+                            background: elementStyles.buttons.secondaryHoverType === 'outlined' ? '#3D57FF' : 'transparent',
+                            color: elementStyles.buttons.secondaryHoverType === 'outlined' ? 'white' : '#6b7280',
+                            border: 'none',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '14px',
+                            transition: 'all 0.2s ease',
+                            zIndex: 1
+                          }}
+                        >
+                          Outlined
+                        </button>
+                      </div>
+                    </div>
 
                   {/* Hover Text Color - always shown */}
                   <div style={{ marginBottom: '16px' }}>
@@ -3795,7 +4737,7 @@ li {
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={elementStyles.buttons.secondaryHoverColor || '#000000'}
+                          value={elementStyles.buttons.secondaryHoverColor || (elementStyles.buttons.secondaryHoverType === 'solid' ? '#ffffff' : (colors.button || '#000000'))}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, secondaryHoverColor: e.target.value }
@@ -3806,13 +4748,13 @@ li {
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: elementStyles.buttons.secondaryHoverColor ? 1 : 0,
+                            opacity: elementStyles.buttons.secondaryHoverColor || elementStyles.buttons.secondaryHoverType === 'solid' || colors.button ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
-                        {!elementStyles.buttons.secondaryHoverColor && (
+                        {!(elementStyles.buttons.secondaryHoverColor || elementStyles.buttons.secondaryHoverType === 'solid' || colors.button) && (
                           <div style={{
                             width: '100%',
                             height: '100%',
@@ -3831,23 +4773,34 @@ li {
                           </div>
                         )}
                       </div>
-                      <input
-                        type="text"
-                        value={elementStyles.buttons.secondaryHoverColor}
-                        onChange={(e) => setElementStyles({
-                          ...elementStyles,
-                          buttons: { ...elementStyles.buttons, secondaryHoverColor: e.target.value }
-                        })}
-                        placeholder="#ffffff"
-                        style={{
-                          flex: 1,
-                          minWidth: 0,
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          fontSize: '14px'
-                        }}
-                      />
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="text"
+                          value={elementStyles.buttons.secondaryHoverColor}
+                          onChange={(e) => setElementStyles({
+                            ...elementStyles,
+                            buttons: { ...elementStyles.buttons, secondaryHoverColor: e.target.value }
+                          })}
+                          placeholder={elementStyles.buttons.secondaryHoverType === 'solid' ? '#ffffff' : (colors.button || '#000000')}
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                        <div style={{
+                          fontSize: '11px',
+                          color: '#999',
+                          marginTop: '4px'
+                        }}>
+                          {elementStyles.buttons.secondaryHoverColor ? 'Custom override' : elementStyles.buttons.secondaryHoverType === 'solid' ? 'Default: #ffffff' : `Default: ${colors.button || 'button color'}`}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -3857,63 +4810,58 @@ li {
                       <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
                         Hover Background
                       </label>
-                      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
-                          <input
-                            type="color"
-                            value={elementStyles.buttons.secondaryHoverBg || '#000000'}
-                            onChange={(e) => setElementStyles({
-                              ...elementStyles,
-                              buttons: { ...elementStyles.buttons, secondaryHoverBg: e.target.value }
-                            })}
-                            style={{
-                              width: '100%',
-                              height: '100%',
-                              border: '2px solid #ddd',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              opacity: elementStyles.buttons.secondaryHoverBg ? 1 : 0,
-                              position: 'absolute',
-                              top: 0,
-                              left: 0
-                            }}
-                          />
-                          {!elementStyles.buttons.secondaryHoverBg && (
-                            <div style={{
-                              width: '100%',
-                              height: '100%',
-                              border: '2px dashed #ccc',
-                              borderRadius: '6px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '10px',
-                              color: '#999',
-                              fontWeight: '500',
-                              background: 'transparent',
-                              pointerEvents: 'none'
-                            }}>
-                              select
-                            </div>
-                          )}
-                        </div>
-                        <input
-                          type="text"
-                          value={elementStyles.buttons.secondaryHoverBg}
-                          onChange={(e) => setElementStyles({
-                            ...elementStyles,
-                            buttons: { ...elementStyles.buttons, secondaryHoverBg: e.target.value }
-                          })}
-                          placeholder="#ffffff"
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '10px',
-                            border: '1px solid #ddd',
+                      <div>
+                        <div style={{ 
+                          display: 'flex', 
+                          gap: '12px', 
+                          alignItems: 'center',
+                          padding: '12px',
+                          background: '#fff',
+                          border: '1px solid #e0e0e0',
+                          borderRadius: '8px'
+                        }}>
+                          <div style={{
+                            width: '40px',
+                            height: '40px',
+                            background: colors.button || '#f5f5f5',
+                            border: colors.button ? '2px solid #ddd' : '2px dashed #ccc',
                             borderRadius: '6px',
-                            fontSize: '14px'
+                            flexShrink: 0
+                          }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ 
+                              fontSize: '13px', 
+                              fontFamily: 'monospace',
+                              color: colors.button ? '#333' : '#999'
+                            }}>
+                              {colors.button || 'Not set'}
+                            </div>
+                            <div style={{
+                              fontSize: '11px',
+                              color: '#999',
+                              marginTop: '2px'
+                            }}>
+                              Using button color
+                            </div>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setActiveSection('colors')}
+                          style={{
+                            marginTop: '8px',
+                            padding: '6px 12px',
+                            background: 'transparent',
+                            color: '#3D57FF',
+                            border: '1px solid #3D57FF',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: '500',
+                            width: '100%'
                           }}
-                        />
+                        >
+                          → Configure in Colors
+                        </button>
                       </div>
                     </div>
                   )}
@@ -4016,8 +4964,8 @@ li {
                               marginTop: '8px',
                               padding: '6px 12px',
                               background: 'transparent',
-                              color: '#667eea',
-                              border: '1px solid #667eea',
+                              color: '#3D57FF',
+                              border: '1px solid #3D57FF',
                               borderRadius: '4px',
                               cursor: 'pointer',
                               fontSize: '11px',
@@ -4031,20 +4979,17 @@ li {
                       </div>
                     </>
                   )}
-                </div>
 
-                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#667eea' }}>Global Settings</h3>
-                  
-                  <div>
+                  {/* Hover Transition */}
+                  <div style={{ marginTop: '24px' }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
                       Hover Transition
                     </label>
                     <select
-                      value={elementStyles.buttons.transition}
+                      value={elementStyles.buttons.secondaryTransition}
                       onChange={(e) => setElementStyles({
                         ...elementStyles,
-                        buttons: { ...elementStyles.buttons, transition: e.target.value }
+                        buttons: { ...elementStyles.buttons, secondaryTransition: e.target.value }
                       })}
                       style={{
                         width: '100%',
@@ -4066,6 +5011,7 @@ li {
                       <option value="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)">Material (0.3s)</option>
                     </select>
                   </div>
+                  </div>{/* End Hover State Container */}
                 </div>
               </div>
             </div>
@@ -4076,6 +5022,42 @@ li {
             <div>
               <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Input Field Styles</h2>
               
+              {/* Accessibility Warning */}
+              <div style={{
+                background: '#fff3cd',
+                border: '2px solid #ffc107',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <div style={{ fontSize: '24px', lineHeight: '1' }}>⚠️</div>
+                  <div>
+                    <div style={{
+                      fontWeight: '700',
+                      fontSize: '16px',
+                      color: '#856404',
+                      marginBottom: '8px'
+                    }}>
+                      Accessibility Notice
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      lineHeight: '1.6',
+                      color: '#856404'
+                    }}>
+                      Customizing input fields is generally not recommended to ensure accessibility compliance. 
+                      Only customize these fields if completely necessary. Default browser styles provide the 
+                      best accessibility and user experience across different assistive technologies.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 {[
                   { key: 'backgroundColor', label: 'Background Color', type: 'color' },
@@ -4158,6 +5140,7 @@ li {
                           ...elementStyles,
                           inputs: { ...elementStyles.inputs, [field.key]: e.target.value }
                         })}
+                        placeholder="e.g., 4px"
                         style={{
                         width: '100%',
                         minWidth: 0,
@@ -4198,6 +5181,41 @@ li {
                 </div>
               </div>
 
+              {/* Beta Warning */}
+              <div style={{
+                background: '#e0e7ff',
+                border: '2px solid #6366f1',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <div style={{ fontSize: '24px', lineHeight: '1' }}>🚧</div>
+                  <div>
+                    <div style={{
+                      fontWeight: '700',
+                      fontSize: '16px',
+                      color: '#4338ca',
+                      marginBottom: '8px'
+                    }}>
+                      Beta Feature - Under Development
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      lineHeight: '1.6',
+                      color: '#4338ca'
+                    }}>
+                      Modal customization is still in beta and partially under development. This feature is not production-ready. 
+                      Test thoroughly before deploying to live environments.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {elementStyles.modals.darkMode && (
                 <div style={{ 
                   background: '#fef3c7', 
@@ -4215,7 +5233,7 @@ li {
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 {[
                   { key: 'backgroundColor', label: 'Background Color', type: 'color' },
-                  { key: 'textColor', label: 'Text Color', type: 'text' },
+                  { key: 'textColor', label: 'Text Color', type: 'color' },
                   { key: 'borderColor', label: 'Border Color', type: 'color' },
                   { key: 'padding', label: 'Padding', type: 'text' }
                 ].map(field => (
@@ -4294,6 +5312,7 @@ li {
                           ...elementStyles,
                           modals: { ...elementStyles.modals, [field.key]: e.target.value }
                         })}
+                        placeholder={field.key === 'padding' ? 'e.g., 16px' : ''}
                         style={{
                         width: '100%',
                         minWidth: 0,
@@ -4316,12 +5335,94 @@ li {
             <div>
               <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>List Styles</h2>
               
+              {/* Background Color - special two-input component */}
+              <div style={{ 
+                background: '#f9f9f9', 
+                padding: '20px', 
+                borderRadius: '12px',
+                border: '1px solid #e0e0e0',
+                marginBottom: '20px'
+              }}>
+                <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#555' }}>
+                  Background Color
+                </label>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                    <input
+                      type="color"
+                      value={(elementStyles.lists.backgroundColor || colors.background || '#FFFFFF')}
+                      onChange={(e) => setElementStyles({
+                        ...elementStyles,
+                        lists: { ...elementStyles.lists, backgroundColor: e.target.value }
+                      })}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        border: '2px solid #ddd',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        opacity: (elementStyles.lists.backgroundColor || colors.background) ? 1 : 0,
+                        position: 'absolute',
+                        top: 0,
+                        left: 0
+                      }}
+                    />
+                    {!(elementStyles.lists.backgroundColor || colors.background) && (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        border: '2px dashed #ccc',
+                        borderRadius: '6px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        color: '#999',
+                        fontWeight: '500',
+                        background: 'transparent',
+                        pointerEvents: 'none'
+                      }}>
+                        select
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <input
+                      type="text"
+                      value={elementStyles.lists.backgroundColor}
+                      onChange={(e) => setElementStyles({
+                        ...elementStyles,
+                        lists: { ...elementStyles.lists, backgroundColor: e.target.value }
+                      })}
+                      placeholder={colors.background || '#FFFFFF'}
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                    <div style={{
+                      fontSize: '11px',
+                      color: '#999',
+                      marginTop: '4px'
+                    }}>
+                      {elementStyles.lists.backgroundColor ? 'Custom override' : `Default: ${colors.background || 'background color'}`}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Other List Fields */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
                 {[
-                  { key: 'backgroundColor', label: 'Background Color', type: 'text' },
                   { key: 'padding', label: 'Padding', type: 'text' },
                   { key: 'margin', label: 'Margin', type: 'text' },
-                  { key: 'listStyle', label: 'List Style', type: 'select', options: ['disc', 'circle', 'square', 'none'] }
+                  { key: 'listStyle', label: 'List Style', type: 'select', options: ['Default', 'disc', 'circle', 'square', 'none'] }
                 ].map(field => (
                   <div key={field.key} style={{ 
                     background: '#f9f9f9', 
@@ -4361,6 +5462,7 @@ li {
                           ...elementStyles,
                           lists: { ...elementStyles.lists, [field.key]: e.target.value }
                         })}
+                        placeholder={field.key === 'padding' ? 'e.g., 4px 8px' : field.key === 'margin' ? 'e.g., 4px 0' : ''}
                         style={{
                         width: '100%',
                         minWidth: 0,
@@ -4374,6 +5476,186 @@ li {
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Advanced CSS Section */}
+          {activeSection === 'advanced' && (
+            <div>
+              <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Advanced CSS Options</h2>
+              
+              <div style={{
+                background: '#f0f4ff',
+                border: '2px solid #3D57FF',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <div style={{ fontSize: '24px', lineHeight: '1' }}>ℹ️</div>
+                  <div>
+                    <div style={{
+                      fontWeight: '700',
+                      fontSize: '16px',
+                      color: '#4338ca',
+                      marginBottom: '8px'
+                    }}>
+                      About Advanced CSS
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      lineHeight: '1.6',
+                      color: '#4338ca'
+                    }}>
+                      These are pre-configured CSS fixes for common styling issues. Enable only the fixes you need.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plugin Margin Fix Toggle */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Plugin Margin Fix
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      Fixes vertical spacing issue for the main plugin container. Redefines 14px top margin to close the visible gap.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>#plugins-wrapper&gt;div.ui.equal.height.grid.stackable.tour-page</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>margin-top: 14px !important;</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      pluginMarginFix: !advancedCSS.pluginMarginFix 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.pluginMarginFix ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.pluginMarginFix ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{ 
+                      fontSize: '14px', 
+                      color: advancedCSS.pluginMarginFix ? '#22c55e' : '#999', 
+                      fontWeight: '600',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.pluginMarginFix ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto-Expand Experience Description Toggle */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Auto-Expand Experience Description
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6' }}>
+                      Removes the "more" link and automatically displays the full experience description on both desktop and mobile.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>.TourPage-About-description</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>height: auto !important;</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Also hides:</div>
+                      <div style={{ color: '#3D57FF' }}>.TourPage-About-description:after, .TourPage-About-description-more</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      autoExpandDescription: !advancedCSS.autoExpandDescription 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.autoExpandDescription ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.autoExpandDescription ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{ 
+                      fontSize: '14px', 
+                      color: advancedCSS.autoExpandDescription ? '#22c55e' : '#999', 
+                      fontWeight: '600',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.autoExpandDescription ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -4392,7 +5674,7 @@ li {
                   onClick={addSnippet}
                   style={{
                     padding: '10px 20px',
-                    background: '#667eea',
+                    background: '#3D57FF',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
@@ -4405,6 +5687,42 @@ li {
                 >
                   <Plus size={16} /> Add Snippet
                 </button>
+              </div>
+
+              {/* Warning Notice */}
+              <div style={{
+                background: '#fee2e2',
+                border: '2px solid #ef4444',
+                borderRadius: '12px',
+                padding: '20px',
+                marginBottom: '24px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '12px'
+                }}>
+                  <div style={{ fontSize: '24px', lineHeight: '1' }}>⚠️</div>
+                  <div>
+                    <div style={{
+                      fontWeight: '700',
+                      fontSize: '16px',
+                      color: '#991b1b',
+                      marginBottom: '8px'
+                    }}>
+                      Advanced Users Only
+                    </div>
+                    <div style={{
+                      fontSize: '14px',
+                      lineHeight: '1.6',
+                      color: '#991b1b'
+                    }}>
+                      Custom CSS snippets are for advanced users who understand CSS selectors and properties. 
+                      Incorrect CSS can easily break the styling of your booking pages. Only use this feature 
+                      if you know what you're doing.
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {customSnippets.map((snippet, index) => (
@@ -4583,11 +5901,11 @@ li {
                   cursor: 'pointer',
                   fontWeight: '600',
                   fontSize: '13px',
-                  color: '#667eea',
+                  color: '#3D57FF',
                   padding: '8px',
                   background: '#f0f4ff',
                   borderRadius: '6px',
-                  border: '1px solid #667eea'
+                  border: '1px solid #3D57FF'
                 }}>
                   📋 Deployment Checklist
                 </summary>
@@ -4620,7 +5938,7 @@ li {
                   onClick={exportCSS}
                   style={{
                     padding: '10px 20px',
-                    background: '#667eea',
+                    background: '#3D57FF',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
@@ -4639,9 +5957,9 @@ li {
                   onClick={copyCSS}
                   style={{
                     padding: '10px 20px',
-                    background: copied ? '#22c55e' : '#764ba2',
-                    color: 'white',
-                    border: 'none',
+                    background: copied ? '#22c55e' : 'white',
+                    color: copied ? 'white' : '#3D57FF',
+                    border: copied ? 'none' : '2px solid #3D57FF',
                     borderRadius: '8px',
                     cursor: 'pointer',
                     display: 'flex',
@@ -4649,7 +5967,7 @@ li {
                     gap: '8px',
                     fontWeight: '600',
                     fontSize: '14px',
-                    transition: 'background 0.2s'
+                    transition: 'all 0.2s'
                   }}
                 >
                   {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -4680,6 +5998,7 @@ li {
           </div>
         </div>
     </div>
+    </>
   );
 };
 
