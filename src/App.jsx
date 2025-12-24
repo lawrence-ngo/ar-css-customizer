@@ -3028,6 +3028,35 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           ))}
                         </optgroup>
                       )}
+                      <optgroup label="Sans-serif Fonts">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Helvetica Neue">Helvetica Neue</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                        <option value="Segoe UI">Segoe UI</option>
+                      </optgroup>
+                      <optgroup label="Serif Fonts">
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Times">Times</option>
+                        <option value="Garamond">Garamond</option>
+                      </optgroup>
+                      <optgroup label="Monospace Fonts">
+                        <option value="Courier New">Courier New</option>
+                        <option value="Courier">Courier</option>
+                        <option value="Monaco">Monaco</option>
+                        <option value="Consolas">Consolas</option>
+                      </optgroup>
+                      <optgroup label="Generic Families">
+                        <option value="sans-serif">Sans-serif (generic)</option>
+                        <option value="serif">Serif (generic)</option>
+                        <option value="monospace">Monospace (generic)</option>
+                        <option value="cursive">Cursive (generic)</option>
+                        <option value="fantasy">Fantasy (generic)</option>
+                        <option value="system-ui">System UI</option>
+                      </optgroup>
                     </select>
                     {getAllFontFamilies().length === 0 && (
                       <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
@@ -3241,6 +3270,35 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           ))}
                         </optgroup>
                       )}
+                      <optgroup label="Sans-serif Fonts">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Helvetica Neue">Helvetica Neue</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                        <option value="Segoe UI">Segoe UI</option>
+                      </optgroup>
+                      <optgroup label="Serif Fonts">
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Times">Times</option>
+                        <option value="Garamond">Garamond</option>
+                      </optgroup>
+                      <optgroup label="Monospace Fonts">
+                        <option value="Courier New">Courier New</option>
+                        <option value="Courier">Courier</option>
+                        <option value="Monaco">Monaco</option>
+                        <option value="Consolas">Consolas</option>
+                      </optgroup>
+                      <optgroup label="Generic Families">
+                        <option value="sans-serif">Sans-serif (generic)</option>
+                        <option value="serif">Serif (generic)</option>
+                        <option value="monospace">Monospace (generic)</option>
+                        <option value="cursive">Cursive (generic)</option>
+                        <option value="fantasy">Fantasy (generic)</option>
+                        <option value="system-ui">System UI</option>
+                      </optgroup>
                     </select>
                     {getAllFontFamilies().length === 0 && (
                       <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
@@ -3375,6 +3433,35 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           ))}
                         </optgroup>
                       )}
+                      <optgroup label="Sans-serif Fonts">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Helvetica Neue">Helvetica Neue</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                        <option value="Segoe UI">Segoe UI</option>
+                      </optgroup>
+                      <optgroup label="Serif Fonts">
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Times">Times</option>
+                        <option value="Garamond">Garamond</option>
+                      </optgroup>
+                      <optgroup label="Monospace Fonts">
+                        <option value="Courier New">Courier New</option>
+                        <option value="Courier">Courier</option>
+                        <option value="Monaco">Monaco</option>
+                        <option value="Consolas">Consolas</option>
+                      </optgroup>
+                      <optgroup label="Generic Families">
+                        <option value="sans-serif">Sans-serif (generic)</option>
+                        <option value="serif">Serif (generic)</option>
+                        <option value="monospace">Monospace (generic)</option>
+                        <option value="cursive">Cursive (generic)</option>
+                        <option value="fantasy">Fantasy (generic)</option>
+                        <option value="system-ui">System UI</option>
+                      </optgroup>
                     </select>
                     {getAllFontFamilies().length === 0 && (
                       <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
