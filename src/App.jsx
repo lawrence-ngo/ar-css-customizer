@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Download, Plus, Trash2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
 
 const CSSCustomizer = () => {
@@ -107,7 +107,8 @@ const CSSCustomizer = () => {
     subtitleSize: '',
     subtitleSizeMobile: '',
     textTransform: 'none',
-    linkUnderline: false
+    linkUnderline: false,
+    checkoutH2FontSize: ''
   });
 
   // Fallback font options - simplified to just show font names
@@ -249,7 +250,9 @@ const CSSCustomizer = () => {
       mobileListButtonMarginTop: '',
       mobileListButtonMarginLeft: '',
       mobileListButtonHeight: '',
-      mobileListButtonPaddingTop: ''
+      mobileListButtonPaddingTop: '',
+      // Purchase CTA Button
+      purchaseButtonHeight: ''
     },
     inputs: {
       backgroundColor: '',
@@ -277,6 +280,15 @@ const CSSCustomizer = () => {
     },
     atAGlance: {
       zebraStripingColor: ''
+    },
+    dividers: {
+      color: '',
+      thickness: '',
+      style: 'solid'
+    },
+    checkoutSummary: {
+      backgroundColor: '',
+      dividerColor: ''
     }
   });
 
@@ -285,7 +297,10 @@ const CSSCustomizer = () => {
     pluginMarginFix: true,
     autoExpandDescription: false,
     contactGuideAlignment: true,
-    mobileCheckoutTitleColor: true
+    mobileCheckoutTitleColor: true,
+    discountCodeButtonHeight: true,
+    discountCodeButtonFontSize: '',
+    discountCodeButtonPaddingTop: ''
   });
 
   // Custom CSS snippets
@@ -294,6 +309,57 @@ const CSSCustomizer = () => {
   // Import configuration state
   const [importCSS, setImportCSS] = useState('');
   const [importStatus, setImportStatus] = useState({ type: '', message: '' });
+
+  // Inject fonts into page for live previews
+  useEffect(() => {
+    // Remove existing font style tag if it exists
+    const existingStyle = document.getElementById('preview-fonts');
+    if (existingStyle) {
+      existingStyle.remove();
+    }
+
+    // Build font imports/definitions
+    let fontCSS = '';
+    fonts.forEach(font => {
+      if (font.type === 'typekit' && font.typekitUrl) {
+        fontCSS += `@import url("${font.typekitUrl}");\n`;
+      } else if (font.type === 'google' && font.googleLink) {
+        fontCSS += `@import url('${font.googleLink}');\n`;
+      } else if (font.type === 'custom' && font.files && font.files.length > 0) {
+        // Generate @font-face for each custom font file
+        font.files.forEach(file => {
+          // Detect format from URL
+          let format = 'woff2';
+          if (file.url.includes('.woff2')) format = 'woff2';
+          else if (file.url.includes('.woff')) format = 'woff';
+          else if (file.url.includes('.ttf')) format = 'truetype';
+          else if (file.url.includes('.otf')) format = 'opentype';
+          
+          fontCSS += `@font-face {
+  font-family: "${font.name}";
+  src: url('${file.url}') format('${format}');
+  font-weight: ${file.weight || 'normal'};
+  font-style: ${file.style || 'normal'};
+  font-display: swap;
+}
+`;
+        });
+      }
+    });
+
+    // Inject font imports if any exist
+    if (fontCSS) {
+      const style = document.createElement('style');
+      style.id = 'preview-fonts';
+      style.textContent = fontCSS;
+      document.head.appendChild(style);
+    }
+  }, [fonts]);
+
+  // Scroll to top when navigating between sections
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [activeSection]);
 
   // Parse and import CSS configuration
   const parseAndImportCSS = (cssText) => {
@@ -529,6 +595,38 @@ const CSSCustomizer = () => {
         }
       }
 
+      // Parse Checkout H2 Font Size
+      const checkoutH2Match = normalizedCSS.match(/\.CheckoutPage\s+h2[^{]*\{([^}]+)\}/);
+      if (checkoutH2Match) {
+        const checkoutH2Content = checkoutH2Match[1];
+        const fontSize = checkoutH2Content.match(/font-size:\s*([^;!]+)/);
+        
+        if (fontSize) {
+          setTypography(prev => ({
+            ...prev,
+            checkoutH2FontSize: fontSize[1].trim()
+          }));
+          importedCount++;
+        }
+      }
+      
+      // Also check for .CheckoutSection h2
+      if (!checkoutH2Match) {
+        const checkoutSectionH2Match = normalizedCSS.match(/\.CheckoutSection\s+h2[^{]*\{([^}]+)\}/);
+        if (checkoutSectionH2Match) {
+          const checkoutH2Content = checkoutSectionH2Match[1];
+          const fontSize = checkoutH2Content.match(/font-size:\s*([^;!]+)/);
+          
+          if (fontSize) {
+            setTypography(prev => ({
+              ...prev,
+              checkoutH2FontSize: fontSize[1].trim()
+            }));
+            importedCount++;
+          }
+        }
+      }
+
       // Parse mobile Experience List button
       const mobileListButtonMatch = normalizedCSS.match(/@media\s*\(max-width:\s*600px\)[^{]*\{[^}]*\.book-tour-btn[^{]*\{([^}]+)\}/);
       if (mobileListButtonMatch) {
@@ -550,6 +648,21 @@ const CSSCustomizer = () => {
           setElementStyles(prev => ({
             ...prev,
             buttons: { ...prev.buttons, ...updates }
+          }));
+          importedCount++;
+        }
+      }
+
+      // Parse Purchase CTA Button
+      const purchaseButtonMatch = normalizedCSS.match(/\.ConfirmationContainer\s+\.ButtonContainer\s+\.ui\.button\s*\{([^}]+)\}/);
+      if (purchaseButtonMatch) {
+        const purchaseButtonContent = purchaseButtonMatch[1];
+        const height = purchaseButtonContent.match(/height:\s*([^;!]+)/);
+        
+        if (height) {
+          setElementStyles(prev => ({
+            ...prev,
+            buttons: { ...prev.buttons, purchaseButtonHeight: height[1].trim() }
           }));
           importedCount++;
         }
@@ -932,6 +1045,91 @@ const CSSCustomizer = () => {
         }
       }
 
+      // Parse Dividers
+      const dividerMatch = normalizedCSS.match(/\.CheckoutQuestion[^{]*\{[^}]*border-bottom:\s*([^;!]+)/);
+      if (dividerMatch) {
+        const borderValue = dividerMatch[1].trim();
+        // Parse border shorthand: "1px solid #e6e6e6"
+        const borderParts = borderValue.split(/\s+/);
+        
+        if (borderParts.length >= 3) {
+          setElementStyles(prev => ({
+            ...prev,
+            dividers: {
+              ...prev.dividers,
+              thickness: borderParts[0],
+              style: borderParts[1],
+              color: borderParts.slice(2).join(' ')
+            }
+          }));
+          importedCount++;
+        }
+      }
+      
+      // Also check for .Confirmation-Body .separator background
+      if (!dividerMatch) {
+        const separatorMatch = normalizedCSS.match(/\.Confirmation-Body\s+\.separator\s*\{[^}]*background:\s*([^;!]+)/);
+        if (separatorMatch) {
+          const backgroundColor = separatorMatch[1].trim();
+          
+          setElementStyles(prev => ({
+            ...prev,
+            dividers: {
+              ...prev.dividers,
+              color: backgroundColor
+            }
+          }));
+          importedCount++;
+        }
+      }
+
+      // Parse Checkout Summary
+      const checkoutSummaryMatch = normalizedCSS.match(/\.CheckoutSummary-Container[^{]*\{[^}]*background:\s*([^;!]+)/);
+      if (checkoutSummaryMatch) {
+        const backgroundColor = checkoutSummaryMatch[1].trim();
+        
+        setElementStyles(prev => ({
+          ...prev,
+          checkoutSummary: {
+            ...prev.checkoutSummary,
+            backgroundColor: backgroundColor
+          }
+        }));
+        importedCount++;
+      }
+      
+      // Also check for ConfirmationDefault selector
+      if (!checkoutSummaryMatch) {
+        const confirmationDefaultMatch = normalizedCSS.match(/\.ConfirmationDefault[^{]*\.ConfirmationDefault-Column\.right[^{]*\{[^}]*background:\s*([^;!]+)/);
+        if (confirmationDefaultMatch) {
+          const backgroundColor = confirmationDefaultMatch[1].trim();
+          
+          setElementStyles(prev => ({
+            ...prev,
+            checkoutSummary: {
+              ...prev.checkoutSummary,
+              backgroundColor: backgroundColor
+            }
+          }));
+          importedCount++;
+        }
+      }
+
+      // Parse Checkout Summary Divider
+      const checkoutSummaryDividerMatch = normalizedCSS.match(/\.CheckoutSummary-ContentBox[^{]*\{[^}]*border-bottom:\s*[^;]*solid\s+([^;!]+)/);
+      if (checkoutSummaryDividerMatch) {
+        const dividerColor = checkoutSummaryDividerMatch[1].trim();
+        
+        setElementStyles(prev => ({
+          ...prev,
+          checkoutSummary: {
+            ...prev.checkoutSummary,
+            dividerColor: dividerColor
+          }
+        }));
+        importedCount++;
+      }
+
       // Parse input fields
       const inputMatch = normalizedCSS.match(/input\[type='text'\][^{]*\{([^}]+)\}/);
       if (inputMatch) {
@@ -1055,6 +1253,24 @@ const CSSCustomizer = () => {
         importedCount++;
       }
 
+      // Parse Discount Code Button Height Fix
+      const discountCodeButtonMatch = normalizedCSS.match(/\.DiscountCodeContainer\s+\.DiscountCode-Input\s+\.ui\.button\s*\{([^}]+)\}/);
+      if (discountCodeButtonMatch) {
+        const buttonContent = discountCodeButtonMatch[1];
+        const fontSize = buttonContent.match(/font-size:\s*([^;!]+)/);
+        const paddingTop = buttonContent.match(/padding-top:\s*([^;!]+)/);
+        
+        if (buttonContent.includes('height:') && buttonContent.includes('47px')) {
+          setAdvancedCSS(prev => ({ 
+            ...prev, 
+            discountCodeButtonHeight: true,
+            discountCodeButtonFontSize: fontSize ? fontSize[1].trim() : '',
+            discountCodeButtonPaddingTop: paddingTop ? paddingTop[1].trim() : ''
+          }));
+          importedCount++;
+        }
+      }
+
       // Parse custom CSS snippets section
       const newSnippets = [];
       
@@ -1089,19 +1305,25 @@ const CSSCustomizer = () => {
         ':root', 'body', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
         '.button', '.ui.button', '.ui.anygreen', '.ui.basic',
         '.tour-title', '.tour-tagline', '.TourPage', '.CheckoutSummary',
-        '.ConfirmationContainer', '.BookingRequest', '.infoPanel',
+        '.ConfirmationContainer', '.ButtonContainer', '.BookingRequest', '.infoPanel',
         '#iframe_wrapper', '#request-booking', '.Plugins-',
         '.ModifyBooking', '.DiscountCode', '.rescheduleModal',
         '.contactModal', '.multi-select', '.css-', '@font-face',
-        '@import', '@media', '.ConfirmationDefault', '.GoG',
+        '@import', '@media', '.ConfirmationDefault', '.Confirmation-grid', '.ConfirmationDefault-Column', '.GoG',
         'a ', 'a:', 'input', 'select', 'textarea', '.field',
         // Advanced CSS selectors
         '#plugins-wrapper', '.TourPage-About-description', 
         '.TourPage-ContactGuide-link', '.ContactGuide-link-text',
-        '.MobileCheckout-CoverPhoto',
+        '.MobileCheckout-CoverPhoto', '.DiscountCode-Input',
         // Element selectors
         'li', '.tour-wrapper', '.ui.modal', '.ui.grid', '.TourPage-Glance',
-        '.book-tour-btn', '.CheckoutNavigationController', '.BookingRequest-submit'
+        '.book-tour-btn', '.CheckoutNavigationController', '.BookingRequest-submit',
+        // Divider selectors
+        '.CheckoutDesktopPage', '.CheckoutPersonal', '.CheckoutPayment', '.DiscountCodeContainer',
+        '.CheckoutQuestion', '.MessageGuideContainer', '.CheckoutPage', '.CheckoutSection', 
+        '.CheckoutSummary-Container', '.CheckoutSummary-ContentBox', '.TourPage-About-hr',
+        '.Subtotal-PriceBreakdown', '.CheckoutSummary-PriceBreakDown', '.t-mobile',
+        '.Confirmation-Body', '.separator'
       ];
       
       // Find all CSS rules
@@ -1536,6 +1758,17 @@ const CSSCustomizer = () => {
 `;
     }
 
+    // Checkout H2 Font Size
+    if (typography.checkoutH2FontSize) {
+      css += `/* Checkout H2 Font Size */
+.CheckoutPage h2,
+.CheckoutSection h2 {
+  font-size: ${typography.checkoutH2FontSize} !important;
+}
+
+`;
+    }
+
     // Link underline
     if (typography.linkUnderline) {
       css += `.TourPage-About-description a, .contains-brand-link a {
@@ -1687,6 +1920,19 @@ ${elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHover
 `;
     }
 
+    // Advanced CSS - Discount Code Button Height Fix
+    // This comes after button CSS blocks to ensure it has priority
+    if (advancedCSS.discountCodeButtonHeight) {
+      css += `/* Advanced CSS - Discount Code Button Height Fix */
+.DiscountCodeContainer .DiscountCode-Input .ui.button {
+  height: 47px !important;${advancedCSS.discountCodeButtonFontSize ? `
+  font-size: ${advancedCSS.discountCodeButtonFontSize} !important;` : ''}${advancedCSS.discountCodeButtonPaddingTop ? `
+  padding-top: ${advancedCSS.discountCodeButtonPaddingTop} !important;` : ''}
+}
+
+`;
+    }
+
     // Input Fields - only generate if properties are defined
     if (elementStyles.inputs.backgroundColor || elementStyles.inputs.textColor || elementStyles.inputs.borderColor || elementStyles.inputs.borderRadius) {
       css += `/* Input Fields */
@@ -1797,6 +2043,67 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 `;
     }
 
+    // Dividers
+    // Only generate if user has customized from defaults (1px solid #e6e6e6)
+    if (elementStyles.dividers.color || elementStyles.dividers.thickness || (elementStyles.dividers.style && elementStyles.dividers.style !== 'solid')) {
+      const borderValue = `${elementStyles.dividers.thickness || '1px'} ${elementStyles.dividers.style || 'solid'} ${elementStyles.dividers.color || '#e6e6e6'}`;
+      
+      css += `/* Dividers */
+.CheckoutDesktopPage .ColumnContainer .CheckoutPersonal,
+.CheckoutDesktopPage .ColumnContainer .CheckoutPayment,
+.CheckoutDesktopPage .DiscountCodeContainer,
+.CheckoutQuestion,
+.TourPage-About-hr {
+  border-bottom: ${borderValue};
+}
+
+.Plugins-TourPage-GlanceWrapper .TourPage-Glance {
+  border-top: ${borderValue};
+}
+
+.MessageGuideContainer,
+.DiscountCodeContainer.t-mobile {
+  border-bottom: ${borderValue};
+  border-top: ${borderValue};
+}
+
+.Confirmation-Body .separator {
+  background: ${elementStyles.dividers.color || '#e6e6e6'};
+}
+
+`;
+    }
+
+    // Checkout Summary
+    // Background color - only generate if user has configured it
+    if (elementStyles.checkoutSummary.backgroundColor) {
+      css += `/* Checkout Summary - Background */
+.CheckoutSummary-Container,
+.CheckoutSummary-ContentBox.Subtotal-PriceBreakdown .CheckoutSummary-PriceBreakDown,
+.ConfirmationDefault .ui.grid.Confirmation-grid .column.ConfirmationDefault-Column.right {
+  background: ${elementStyles.checkoutSummary.backgroundColor} !important;
+}
+
+@media screen and (max-width: 767px) {
+  .CheckoutSummary {
+    background: ${elementStyles.checkoutSummary.backgroundColor} !important;
+  }
+}
+
+`;
+    }
+
+    // Checkout Summary - Divider
+    // Only generate if user has configured a divider color
+    if (elementStyles.checkoutSummary.dividerColor) {
+      css += `/* Checkout Summary - Divider */
+.CheckoutSummary-ContentBox {
+  border-bottom: 1px solid ${elementStyles.checkoutSummary.dividerColor} !important;
+}
+
+`;
+    }
+
 
     // Mobile Styles
     if (typography.titleSizeMobile || typography.subtitleSizeMobile) {
@@ -1829,6 +2136,16 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
     height: ${elementStyles.buttons.mobileListButtonHeight} !important;` : ''}${elementStyles.buttons.mobileListButtonPaddingTop ? `
     padding-top: ${elementStyles.buttons.mobileListButtonPaddingTop} !important;` : ''}
   }
+}
+
+`;
+    }
+
+    // Purchase CTA Button
+    if (elementStyles.buttons.purchaseButtonHeight) {
+      css += `/* Purchase CTA Button */
+.ConfirmationContainer .ButtonContainer .ui.button {
+  height: ${elementStyles.buttons.purchaseButtonHeight} !important;
 }
 
 `;
@@ -4335,6 +4652,60 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     </small>
                   </div>
                 </div>
+
+                {/* Checkout H2 Font Size - Advanced Setting */}
+                <div style={{
+                  background: '#f0f4ff',
+                  border: '2px solid #3D57FF',
+                  borderRadius: '12px',
+                  padding: '24px',
+                  marginTop: '24px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '16px'
+                  }}>
+                    <span style={{ fontSize: '20px' }}>⚙️</span>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Checkout H2 Font Size (Advanced)
+                    </h3>
+                  </div>
+                  <div style={{
+                    fontSize: '14px',
+                    color: '#4338ca',
+                    marginBottom: '16px',
+                    lineHeight: '1.6'
+                  }}>
+                    Configure the font size for H2 headings specifically on checkout pages. This setting only affects checkout pages and does not impact other H2 headings.
+                  </div>
+                  <div style={{ 
+                    background: 'white',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #d0d9ff'
+                  }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Font Size
+                    </label>
+                    <input
+                      type="text"
+                      value={typography.checkoutH2FontSize}
+                      onChange={(e) => setTypography({ ...typography, checkoutH2FontSize: e.target.value })}
+                      placeholder="e.g., 24px"
+                      style={{
+                        width: '100%',
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </div>
+                </div>
                 </div>
             </div>
           )}
@@ -4370,6 +4741,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           textTransform: typography.textTransform !== 'none' ? typography.textTransform : 'none',
                           lineHeight: typography.buttonLineHeight || 'normal',
                           fontSize: typography.buttonFontSize || '14px',
+                          letterSpacing: typography.buttonLetterSpacing || 'normal',
                           border: elementStyles.buttons.primaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.primaryBorderWidth} ${elementStyles.buttons.primaryBorderStyle} ${elementStyles.buttons.primaryBorderColor === 'button' ? (colors.button || '#3D57FF') : elementStyles.buttons.primaryBorderColor}`,
                           padding: '10px 20px',
                           cursor: 'pointer',
@@ -5109,6 +5481,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           textTransform: typography.textTransform !== 'none' ? typography.textTransform : 'none',
                           lineHeight: typography.buttonLineHeight || 'normal',
                           fontSize: typography.buttonFontSize || '14px',
+                          letterSpacing: typography.buttonLetterSpacing || 'normal',
                           border: elementStyles.buttons.secondaryType === 'solid' ? `1px solid ${elementStyles.buttons.secondaryBg || colors.button || '#3D57FF'}` : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || (colors.button ? colors.button : '#3D57FF')}`,
                           padding: '10px 20px',
                           cursor: 'pointer',
@@ -5972,6 +6345,76 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   ))}
                 </div>
               </div>
+
+              {/* Purchase CTA Button (Advanced) */}
+              <div style={{
+                background: '#f0f4ff',
+                border: '2px solid #3D57FF',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px',
+                marginTop: '32px'
+              }}>
+                <div style={{
+                  background: '#ffffff',
+                  padding: '24px',
+                  borderRadius: '12px',
+                  marginBottom: '24px'
+                }}>
+                  <div>
+                    <h3 style={{ 
+                      margin: '0 0 12px 0', 
+                      fontSize: '20px', 
+                      color: '#333', 
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      ⚙️ Purchase CTA Button (Advanced)
+                    </h3>
+                    <p style={{ 
+                      margin: 0, 
+                      fontSize: '14px', 
+                      color: '#4338ca', 
+                      lineHeight: '1.6' 
+                    }}>
+                      Fine-tune the purchase/confirmation CTA for guest checkout.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ 
+                  background: '#ffffff', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  border: '1px solid #e0e0e0',
+                  maxWidth: '250px'
+                }}>
+                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '14px' }}>
+                    Button Height
+                  </label>
+                  <input
+                    type="text"
+                    value={elementStyles.buttons.purchaseButtonHeight}
+                    onChange={(e) => setElementStyles({
+                      ...elementStyles,
+                      buttons: { ...elementStyles.buttons, purchaseButtonHeight: e.target.value }
+                    })}
+                    placeholder="e.g., 50px"
+                    style={{
+                      width: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                      padding: '10px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      fontFamily: 'monospace'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           )}
 
@@ -6591,6 +7034,332 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   </div>
                 </div>
               </div>
+
+              {/* ============================================ */}
+              {/* DIVIDERS SECTION */}
+              {/* ============================================ */}
+              <div style={{
+                background: '#ffffff',
+                border: '2px solid #e0e0e0',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 24px 0', 
+                  fontSize: '20px', 
+                  color: '#333', 
+                  fontWeight: '600',
+                  paddingBottom: '16px',
+                  borderBottom: '2px solid #f0f0f0'
+                }}>
+                  ➖ Dividers
+                </h3>
+                
+                <div style={{ marginBottom: '16px', padding: '16px', background: '#f0f4ff', border: '1px solid #d0d9ff', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: '#4338ca', lineHeight: '1.6' }}>
+                    Configure the appearance of horizontal divider lines used throughout the booking experience to separate sections.
+                  </div>
+                </div>
+
+                <div style={{ 
+                  background: '#f9f9f9', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  border: '1px solid #e0e0e0',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{ marginBottom: '16px', display: 'flex', gap: '16px', alignItems: 'flex-end' }}>
+                    <div style={{ flex: '0 0 140px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Thickness
+                      </label>
+                      <input
+                        type="text"
+                        value={elementStyles.dividers.thickness}
+                        onChange={(e) => setElementStyles({
+                          ...elementStyles,
+                          dividers: { ...elementStyles.dividers, thickness: e.target.value }
+                        })}
+                        placeholder="1px"
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
+                    
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Style
+                      </label>
+                      <select
+                        value={elementStyles.dividers.style}
+                        onChange={(e) => setElementStyles({
+                          ...elementStyles,
+                          dividers: { ...elementStyles.dividers, style: e.target.value }
+                        })}
+                        style={{
+                          width: '100%',
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          background: 'white'
+                        }}
+                      >
+                        <option value="solid">Solid</option>
+                        <option value="dashed">Dashed</option>
+                        <option value="dotted">Dotted</option>
+                        <option value="double">Double</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Color
+                    </label>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                      <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                        <input
+                          type="color"
+                          value={elementStyles.dividers.color || '#e6e6e6'}
+                          onChange={(e) => setElementStyles({
+                            ...elementStyles,
+                            dividers: { ...elementStyles.dividers, color: e.target.value }
+                          })}
+                          style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            opacity: elementStyles.dividers.color ? 1 : 0,
+                            position: 'absolute',
+                            top: 0,
+                            left: 0
+                          }}
+                        />
+                        {!elementStyles.dividers.color && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px dashed #ccc',
+                            borderRadius: '6px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '10px',
+                            color: '#999',
+                            fontWeight: '500',
+                            background: 'transparent',
+                            pointerEvents: 'none'
+                          }}>
+                            select
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <input
+                          type="text"
+                          value={elementStyles.dividers.color}
+                          onChange={(e) => setElementStyles({
+                            ...elementStyles,
+                            dividers: { ...elementStyles.dividers, color: e.target.value }
+                          })}
+                          placeholder="e.g., #e6e6e6"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* ============================================ */}
+              {/* CHECKOUT SUMMARY SECTION */}
+              {/* ============================================ */}
+              <div style={{
+                background: '#ffffff',
+                border: '2px solid #e0e0e0',
+                borderRadius: '16px',
+                padding: '32px',
+                marginBottom: '32px'
+              }}>
+                <h3 style={{ 
+                  margin: '0 0 24px 0', 
+                  fontSize: '20px', 
+                  color: '#333', 
+                  fontWeight: '600',
+                  paddingBottom: '16px',
+                  borderBottom: '2px solid #f0f0f0'
+                }}>
+                  🧾 Checkout Summary
+                </h3>
+                
+                <div style={{ marginBottom: '16px', padding: '16px', background: '#f0f4ff', border: '1px solid #d0d9ff', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: '#4338ca', lineHeight: '1.6' }}>
+                    Configure the background color of the checkout summary section (order details, pricing breakdown).
+                  </div>
+                </div>
+
+                <div style={{ 
+                  background: '#f9f9f9', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  border: '1px solid #e0e0e0'
+                }}>
+                  <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#555' }}>
+                    Background Color
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                      <input
+                        type="color"
+                        value={elementStyles.checkoutSummary.backgroundColor || '#f2f2f2'}
+                        onChange={(e) => setElementStyles({
+                          ...elementStyles,
+                          checkoutSummary: { ...elementStyles.checkoutSummary, backgroundColor: e.target.value }
+                        })}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          opacity: elementStyles.checkoutSummary.backgroundColor ? 1 : 0,
+                          position: 'absolute',
+                          top: 0,
+                          left: 0
+                        }}
+                      />
+                      {!elementStyles.checkoutSummary.backgroundColor && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px dashed #ccc',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          color: '#999',
+                          fontWeight: '500',
+                          background: 'transparent',
+                          pointerEvents: 'none'
+                        }}>
+                          select
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={elementStyles.checkoutSummary.backgroundColor}
+                      onChange={(e) => setElementStyles({
+                        ...elementStyles,
+                        checkoutSummary: { ...elementStyles.checkoutSummary, backgroundColor: e.target.value }
+                      })}
+                      placeholder="e.g., #f2f2f2"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Divider Color */}
+                <div style={{ 
+                  background: '#f9f9f9', 
+                  padding: '20px', 
+                  borderRadius: '12px',
+                  border: '1px solid #e0e0e0',
+                  marginTop: '16px'
+                }}>
+                  <label style={{ display: 'block', marginBottom: '12px', fontWeight: '600', color: '#555' }}>
+                    Divider Color
+                  </label>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
+                      <input
+                        type="color"
+                        value={elementStyles.checkoutSummary.dividerColor || '#ccc'}
+                        onChange={(e) => setElementStyles({
+                          ...elementStyles,
+                          checkoutSummary: { ...elementStyles.checkoutSummary, dividerColor: e.target.value }
+                        })}
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          opacity: elementStyles.checkoutSummary.dividerColor ? 1 : 0,
+                          position: 'absolute',
+                          top: 0,
+                          left: 0
+                        }}
+                      />
+                      {!elementStyles.checkoutSummary.dividerColor && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px dashed #ccc',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          color: '#999',
+                          fontWeight: '500',
+                          background: 'transparent',
+                          pointerEvents: 'none'
+                        }}>
+                          select
+                        </div>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={elementStyles.checkoutSummary.dividerColor}
+                      onChange={(e) => setElementStyles({
+                        ...elementStyles,
+                        checkoutSummary: { ...elementStyles.checkoutSummary, dividerColor: e.target.value }
+                      })}
+                      placeholder="e.g., #ccc"
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        fontFamily: 'monospace'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -7082,6 +7851,129 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       minWidth: '40px'
                     }}>
                       {advancedCSS.mobileCheckoutTitleColor ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Discount Code Button Height Fix Toggle */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Discount Code Button Height Fix
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+                      Fixes the promo code button height that becomes too tall when a custom font is configured. Sets height to 47px.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>.DiscountCodeContainer .DiscountCode-Input .ui.button</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>height: 47px !important;</div>
+                    </div>
+                    
+                    {/* Font Size Override */}
+                    <div style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '14px' }}>
+                        Font Size Override (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={advancedCSS.discountCodeButtonFontSize}
+                        onChange={(e) => setAdvancedCSS({
+                          ...advancedCSS,
+                          discountCodeButtonFontSize: e.target.value
+                        })}
+                        placeholder="e.g., 14px"
+                        style={{
+                          width: '100%',
+                          maxWidth: '200px',
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
+
+                    {/* Padding Top Override */}
+                    <div style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '14px' }}>
+                        Padding Top Override (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        value={advancedCSS.discountCodeButtonPaddingTop}
+                        onChange={(e) => setAdvancedCSS({
+                          ...advancedCSS,
+                          discountCodeButtonPaddingTop: e.target.value
+                        })}
+                        placeholder="e.g., 10px"
+                        style={{
+                          width: '100%',
+                          maxWidth: '200px',
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      discountCodeButtonHeight: !advancedCSS.discountCodeButtonHeight 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.discountCodeButtonHeight ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.discountCodeButtonHeight ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.discountCodeButtonHeight ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.discountCodeButtonHeight ? 'ON' : 'OFF'}
                     </span>
                   </div>
                 </div>
