@@ -134,6 +134,11 @@ const CSSCustomizer = () => {
     titleSizeMobile: '',
     subtitleSize: '',
     subtitleSizeMobile: '',
+    subtitleFont: '',
+    subtitleFontWeight: '',
+    subtitleTextTransform: '',
+    subtitleLineHeight: '',
+    subtitleLetterSpacing: '',
     textTransform: 'none',
     linkUnderline: false,
     checkoutH2FontSize: ''
@@ -318,7 +323,9 @@ const CSSCustomizer = () => {
     mobileCheckoutTitleColor: true,
     discountCodeButtonHeight: true,
     discountCodeButtonFontSize: '',
-    discountCodeButtonPaddingTop: ''
+    discountCodeButtonPaddingTop: '',
+    hideContactButton: false,
+    hideAtAGlance: false
   });
 
   // Custom CSS snippets
@@ -645,6 +652,29 @@ const CSSCustomizer = () => {
             }));
             importedCount++;
           }
+        }
+      }
+
+      // Parse Subtitle Font Settings
+      const subtitleFontMatch = normalizedCSS.match(/\.tour-tagline,\s*\.TourPage-About-tagline[^{]*\{([^}]+)\}/);
+      if (subtitleFontMatch) {
+        const subtitleContent = subtitleFontMatch[1];
+        const fontFamily = subtitleContent.match(/font-family:\s*([^;!]+)/);
+        const fontWeight = subtitleContent.match(/font-weight:\s*([^;!]+)/);
+        const textTransform = subtitleContent.match(/text-transform:\s*([^;!]+)/);
+        const lineHeight = subtitleContent.match(/line-height:\s*([^;!]+)/);
+        const letterSpacing = subtitleContent.match(/letter-spacing:\s*([^;!]+)/);
+        
+        const updates = {};
+        if (fontFamily) updates.subtitleFont = fontFamily[1].trim();
+        if (fontWeight) updates.subtitleFontWeight = fontWeight[1].trim();
+        if (textTransform) updates.subtitleTextTransform = textTransform[1].trim();
+        if (lineHeight) updates.subtitleLineHeight = lineHeight[1].trim();
+        if (letterSpacing) updates.subtitleLetterSpacing = letterSpacing[1].trim();
+        
+        if (Object.keys(updates).length > 0) {
+          setTypography(prev => ({ ...prev, ...updates }));
+          importedCount++;
         }
       }
 
@@ -1274,6 +1304,18 @@ const CSSCustomizer = () => {
         importedCount++;
       }
 
+      if (normalizedCSS.includes('.TourPage-ContactGuide') &&
+          normalizedCSS.includes('display: none')) {
+        setAdvancedCSS(prev => ({ ...prev, hideContactButton: true }));
+        importedCount++;
+      }
+
+      if (normalizedCSS.includes('.Plugins-TourPage-GlanceWrapper') &&
+          normalizedCSS.includes('display: none')) {
+        setAdvancedCSS(prev => ({ ...prev, hideAtAGlance: true }));
+        importedCount++;
+      }
+
       // Parse Discount Code Button Height Fix
       const discountCodeButtonMatch = normalizedCSS.match(/\.DiscountCodeContainer\s+\.DiscountCode-Input\s+\.ui\.button\s*\{([^}]+)\}/);
       if (discountCodeButtonMatch) {
@@ -1334,10 +1376,10 @@ const CSSCustomizer = () => {
         'a ', 'a:', 'input', 'select', 'textarea', '.field',
         // Advanced CSS selectors
         '#plugins-wrapper', '.TourPage-About-description', 
-        '.TourPage-ContactGuide-link', '.ContactGuide-link-text',
+        '.TourPage-ContactGuide-link', '.TourPage-ContactGuide', '.ContactGuide-link-text',
         '.MobileCheckout-CoverPhoto', '.DiscountCode-Input',
         // Element selectors
-        'li', '.tour-wrapper', '.ui.modal', '.ui.grid', '.TourPage-Glance',
+        'li', '.tour-wrapper', '.ui.modal', '.ui.grid', '.TourPage-Glance', '.Plugins-TourPage-GlanceWrapper',
         '.book-tour-btn', '.CheckoutNavigationController', '.BookingRequest-submit',
         // Divider selectors
         '.CheckoutDesktopPage', '.CheckoutPersonal', '.CheckoutPayment', '.DiscountCodeContainer',
@@ -1782,6 +1824,20 @@ const CSSCustomizer = () => {
 `;
     }
 
+    // Subtitle Font Settings
+    if (typography.subtitleFont || typography.subtitleFontWeight || typography.subtitleTextTransform || typography.subtitleLineHeight || typography.subtitleLetterSpacing) {
+      css += `/* Subtitle Font Settings */
+.tour-tagline, .TourPage-About-tagline {${typography.subtitleFont ? `
+  font-family: ${buildFontStack(typography.subtitleFont, getFontFallback(typography.subtitleFont))} !important;` : ''}${typography.subtitleFontWeight ? `
+  font-weight: ${typography.subtitleFontWeight} !important;` : ''}${typography.subtitleTextTransform ? `
+  text-transform: ${typography.subtitleTextTransform} !important;` : ''}${typography.subtitleLineHeight ? `
+  line-height: ${typography.subtitleLineHeight} !important;` : ''}${typography.subtitleLetterSpacing ? `
+  letter-spacing: ${typography.subtitleLetterSpacing} !important;` : ''}
+}
+
+`;
+    }
+
     // Checkout H2 Font Size
     if (typography.checkoutH2FontSize) {
       css += `/* Checkout H2 Font Size */
@@ -2210,6 +2266,24 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
       css += `/* Advanced CSS - Mobile Checkout Title Color Fix */
 .MobileCheckout-CoverPhoto span.text .title .name {
   color: #ffffff !important;
+}
+
+`;
+    }
+
+    if (advancedCSS.hideContactButton) {
+      css += `/* Advanced CSS - Hide Contact Button */
+.TourPage-ContactGuide {
+  display: none;
+}
+
+`;
+    }
+
+    if (advancedCSS.hideAtAGlance) {
+      css += `/* Advanced CSS - Hide At A Glance Section */
+.Plugins-TourPage-GlanceWrapper {
+  display: none !important;
 }
 
 `;
@@ -4251,13 +4325,186 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     </div>
                   </div>
 
-                  {/* 4b. Font Size - Subtitle Size */}
+                  {/* 5. Line Height & Letter Spacing */}
+                  <div>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Line Height
+                        </label>
+                        <input
+                          type="text"
+                          value={typography.titleLineHeight}
+                          onChange={(e) => setTypography({ ...typography, titleLineHeight: e.target.value })}
+                          placeholder="1"
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Letter Spacing
+                        </label>
+                        <input
+                          type="text"
+                          value={typography.headingLetterSpacing}
+                          onChange={(e) => setTypography({ ...typography, headingLetterSpacing: e.target.value })}
+                          placeholder="0.05em"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+
+                {/* ============================================ */}
+                {/* SUBTITLE CARD */}
+                {/* ============================================ */}
+                <div style={{ background: '#f9f9f9', padding: '20px', borderRadius: '12px', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
+                  <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '16px', color: '#333333' }}>Subtitle (Taglines)</h3>
+                  
+                  {/* 1. Font Family */}
                   <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Font Family
+                    </label>
+                    <select
+                      value={typography.subtitleFont}
+                      onChange={(e) => setTypography({ ...typography, subtitleFont: e.target.value })}
+                      style={{
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px'
+                      }}
+                    >
+                      <option value="">Default</option>
+                      {getAllFontFamilies().length > 0 && (
+                        <optgroup label="Custom Fonts">
+                          {getAllFontFamilies().map(family => (
+                            <option key={family.value} value={family.value}>{family.label}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                      <optgroup label="Sans-serif Fonts">
+                        <option value="Arial">Arial</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Helvetica Neue">Helvetica Neue</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Trebuchet MS">Trebuchet MS</option>
+                        <option value="Segoe UI">Segoe UI</option>
+                      </optgroup>
+                      <optgroup label="Serif Fonts">
+                        <option value="Georgia">Georgia</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Times">Times</option>
+                        <option value="Garamond">Garamond</option>
+                      </optgroup>
+                      <optgroup label="Monospace Fonts">
+                        <option value="Courier New">Courier New</option>
+                        <option value="Courier">Courier</option>
+                        <option value="Monaco">Monaco</option>
+                        <option value="Consolas">Consolas</option>
+                      </optgroup>
+                      <optgroup label="Generic Families">
+                        <option value="sans-serif">Sans-serif (generic)</option>
+                        <option value="serif">Serif (generic)</option>
+                        <option value="monospace">Monospace (generic)</option>
+                        <option value="cursive">Cursive (generic)</option>
+                        <option value="fantasy">Fantasy (generic)</option>
+                        <option value="system-ui">System UI</option>
+                      </optgroup>
+                    </select>
+                    {getAllFontFamilies().length === 0 && (
+                      <small style={{ display: 'block', marginTop: '6px', color: '#888', fontSize: '12px' }}>
+                        Add fonts in <span style={{ color: '#3D57FF', cursor: 'pointer' }} onClick={() => setActiveSection('fonts')}>Font Management</span> to see options here
+                      </small>
+                    )}
+                  </div>
+
+                  {/* 2. Font Weight */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Font Weight
+                    </label>
+                    <select
+                      value={typography.subtitleFontWeight}
+                      onChange={(e) => setTypography({ ...typography, subtitleFontWeight: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        background: 'white'
+                      }}
+                    >
+                      <option value="">Default</option>
+                      <option value="100">100 - Thin</option>
+                      <option value="200">200 - Extra Light</option>
+                      <option value="300">300 - Light</option>
+                      <option value="400">400 - Normal</option>
+                      <option value="500">500 - Medium</option>
+                      <option value="600">600 - Semi Bold</option>
+                      <option value="700">700 - Bold</option>
+                      <option value="800">800 - Extra Bold</option>
+                      <option value="900">900 - Black</option>
+                    </select>
+                  </div>
+
+                  {/* 3. Text Transform */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                      Text Transform
+                    </label>
+                    <select
+                      value={typography.subtitleTextTransform}
+                      onChange={(e) => setTypography({ ...typography, subtitleTextTransform: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        border: '1px solid #ddd',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        background: 'white'
+                      }}
+                    >
+                      <option value="">Default</option>
+                      <option value="none">None</option>
+                      <option value="uppercase">UPPERCASE</option>
+                      <option value="lowercase">lowercase</option>
+                      <option value="capitalize">Capitalize</option>
+                    </select>
+                  </div>
+
+                  {/* 4. Subtitle Size */}
+                  <div>
                     <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600', color: '#555' }}>
-                      Subtitle Size
+                      Font Size
                     </label>
                     <small style={{ display: 'block', marginBottom: '8px', color: '#888', fontSize: '12px' }}>
-                      Font size for secondary headings
+                      Font size for tour/experience taglines
                     </small>
                     <div style={{ display: 'flex', gap: '16px' }}>
                       <div style={{ flex: 1 }}>
@@ -4276,7 +4523,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '1px solid #ddd',
                             borderRadius: '6px',
                             fontSize: '14px',
-                        fontFamily: 'monospace'
+                            fontFamily: 'monospace'
                           }}
                         />
                       </div>
@@ -4296,57 +4543,58 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '1px solid #ddd',
                             borderRadius: '6px',
                             fontSize: '14px',
-                        fontFamily: 'monospace'
+                            fontFamily: 'monospace'
                           }}
                         />
                       </div>
                     </div>
                   </div>
 
-                  {/* 5. Line Height */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Line Height
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.titleLineHeight}
-                      onChange={(e) => setTypography({ ...typography, titleLineHeight: e.target.value })}
-                      placeholder="1"
-                      style={{
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'monospace'
-                      }}
-                    />
-                  </div>
-
-                  {/* 6. Letter Spacing */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Letter Spacing
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.headingLetterSpacing}
-                      onChange={(e) => setTypography({ ...typography, headingLetterSpacing: e.target.value })}
-                      placeholder="e.g., 0.05em or 1px"
-                      style={{
-                        width: '100%',
-                        boxSizing: 'border-box',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'monospace',
-                        fontFamily: 'monospace'
-                      }}
-                    />
+                  {/* 5. Line Height & Letter Spacing */}
+                  <div style={{ marginTop: '16px' }}>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Line Height
+                        </label>
+                        <input
+                          type="text"
+                          value={typography.subtitleLineHeight}
+                          onChange={(e) => setTypography({ ...typography, subtitleLineHeight: e.target.value })}
+                          placeholder="1.5"
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                          Letter Spacing
+                        </label>
+                        <input
+                          type="text"
+                          value={typography.subtitleLetterSpacing}
+                          onChange={(e) => setTypography({ ...typography, subtitleLetterSpacing: e.target.value })}
+                          placeholder="0.05em"
+                          style={{
+                            width: '100%',
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -8377,6 +8625,148 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       minWidth: '40px'
                     }}>
                       {advancedCSS.discountCodeButtonHeight ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hide Contact Button Toggle */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Hide Contact Us Button
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+                      Completely hides the "Contact Us" button from the tour/experience page.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>.TourPage-ContactGuide</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>display: none;</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      hideContactButton: !advancedCSS.hideContactButton 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.hideContactButton ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.hideContactButton ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.hideContactButton ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.hideContactButton ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hide At A Glance Section Toggle */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Hide At A Glance Section
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+                      Completely hides the "At A Glance" section from the tour/experience page.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>.Plugins-TourPage-GlanceWrapper</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>display: none !important;</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      hideAtAGlance: !advancedCSS.hideAtAGlance 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.hideAtAGlance ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.hideAtAGlance ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.hideAtAGlance ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.hideAtAGlance ? 'ON' : 'OFF'}
                     </span>
                   </div>
                 </div>
