@@ -1,5 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Download, Plus, Trash2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+
+// Fallback font options - defined outside component to avoid recreation on each render
+const FALLBACK_FONT_OPTIONS = [
+  { value: 'Arial', label: 'Arial', generic: 'sans-serif' },
+  { value: 'Helvetica', label: 'Helvetica', generic: 'sans-serif' },
+  { value: '"Helvetica Neue"', label: 'Helvetica Neue', generic: 'sans-serif' },
+  { value: 'Verdana', label: 'Verdana', generic: 'sans-serif' },
+  { value: 'Tahoma', label: 'Tahoma', generic: 'sans-serif' },
+  { value: '"Trebuchet MS"', label: 'Trebuchet MS', generic: 'sans-serif' },
+  { value: '"Segoe UI"', label: 'Segoe UI', generic: 'sans-serif' },
+  { value: 'Georgia', label: 'Georgia', generic: 'serif' },
+  { value: '"Times New Roman"', label: 'Times New Roman', generic: 'serif' },
+  { value: 'Times', label: 'Times', generic: 'serif' },
+  { value: 'Garamond', label: 'Garamond', generic: 'serif' },
+  { value: '"Courier New"', label: 'Courier New', generic: 'monospace' },
+  { value: 'Courier', label: 'Courier', generic: 'monospace' },
+  { value: 'Monaco', label: 'Monaco', generic: 'monospace' },
+  { value: 'Consolas', label: 'Consolas', generic: 'monospace' },
+  { value: 'sans-serif', label: 'Sans-serif (generic)', generic: 'sans-serif' },
+  { value: 'serif', label: 'Serif (generic)', generic: 'serif' },
+  { value: 'monospace', label: 'Monospace (generic)', generic: 'monospace' },
+  { value: 'cursive', label: 'Cursive (generic)', generic: 'cursive' },
+  { value: 'fantasy', label: 'Fantasy (generic)', generic: 'fantasy' },
+  { value: 'system-ui', label: 'System UI', generic: 'system-ui' }
+];
 
 const CSSCustomizer = () => {
   const [activeSection, setActiveSection] = useState('start');
@@ -12,6 +37,7 @@ const CSSCustomizer = () => {
   const [colors, setColors] = useState({
     body: '',
     heading: '',
+    link: '',
     button: '',
     hover: '',
     brand: '',
@@ -31,6 +57,7 @@ const CSSCustomizer = () => {
       setColors(prev => ({
         body: prev.body,
         heading: prev.heading,
+        link: prev.link,
         button: prev.button,
         hover: prev.hover,
         brand: prev.brand,
@@ -83,7 +110,6 @@ const CSSCustomizer = () => {
 
   // Typography State
   const [typography, setTypography] = useState({
-    enableFonts: true,
     bodyFont: '',
     bodyFallback: 'Arial',
     bodyFontWeight: '',
@@ -94,6 +120,8 @@ const CSSCustomizer = () => {
     headingFontWeight: '',
     headingTextTransform: '',
     headingLetterSpacing: '',
+    headingSize: '',
+    headingLineHeight: '',
     buttonFont: '',
     buttonFallback: 'Arial',
     buttonFontWeight: '',
@@ -111,34 +139,24 @@ const CSSCustomizer = () => {
     checkoutH2FontSize: ''
   });
 
-  // Fallback font options - simplified to just show font names
-  const fallbackFontOptions = [
-    { value: 'Arial', label: 'Arial', generic: 'sans-serif' },
-    { value: 'Helvetica', label: 'Helvetica', generic: 'sans-serif' },
-    { value: '"Helvetica Neue"', label: 'Helvetica Neue', generic: 'sans-serif' },
-    { value: 'Verdana', label: 'Verdana', generic: 'sans-serif' },
-    { value: 'Tahoma', label: 'Tahoma', generic: 'sans-serif' },
-    { value: '"Trebuchet MS"', label: 'Trebuchet MS', generic: 'sans-serif' },
-    { value: '"Segoe UI"', label: 'Segoe UI', generic: 'sans-serif' },
-    { value: 'Georgia', label: 'Georgia', generic: 'serif' },
-    { value: '"Times New Roman"', label: 'Times New Roman', generic: 'serif' },
-    { value: 'Times', label: 'Times', generic: 'serif' },
-    { value: 'Garamond', label: 'Garamond', generic: 'serif' },
-    { value: '"Courier New"', label: 'Courier New', generic: 'monospace' },
-    { value: 'Courier', label: 'Courier', generic: 'monospace' },
-    { value: 'Monaco', label: 'Monaco', generic: 'monospace' },
-    { value: 'Consolas', label: 'Consolas', generic: 'monospace' },
-    { value: 'sans-serif', label: 'Sans-serif (generic)', generic: 'sans-serif' },
-    { value: 'serif', label: 'Serif (generic)', generic: 'serif' },
-    { value: 'monospace', label: 'Monospace (generic)', generic: 'monospace' },
-    { value: 'cursive', label: 'Cursive (generic)', generic: 'cursive' },
-    { value: 'fantasy', label: 'Fantasy (generic)', generic: 'fantasy' },
-    { value: 'system-ui', label: 'System UI', generic: 'system-ui' }
-  ];
+  // Helper to check if a color value is "transparent"
+  const isTransparent = (color) => {
+    return color && color.toLowerCase().trim() === 'transparent';
+  };
+
+  // Checkerboard pattern style for transparent preview
+  const transparentCheckerboard = {
+    background: `linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                 linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                 linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                 linear-gradient(-45deg, transparent 75%, #ccc 75%)`,
+    backgroundSize: '16px 16px',
+    backgroundPosition: '0 0, 0 8px, 8px -8px, -8px 0px'
+  };
 
   // Function to get the generic family for a fallback font
   const getGenericFamily = (fallbackFont) => {
-    const option = fallbackFontOptions.find(opt => opt.value === fallbackFont);
+    const option = FALLBACK_FONT_OPTIONS.find(opt => opt.value === fallbackFont);
     return option ? option.generic : 'sans-serif';
   };
 
@@ -232,7 +250,7 @@ const CSSCustomizer = () => {
       primaryHoverBorderColor: 'button', // references colors.button
       secondaryType: 'outlined', // 'solid' or 'outlined'
       secondaryColor: '',
-      secondaryBg: 'var(--color-background)',
+      secondaryBg: '', // defaults to button color when solid
       secondaryBorderRadius: '',
       secondaryHoverType: 'solid', // 'solid' or 'outlined'
       secondaryHoverColor: '',
@@ -305,6 +323,9 @@ const CSSCustomizer = () => {
 
   // Custom CSS snippets
   const [customSnippets, setCustomSnippets] = useState([]);
+
+  // Collapsible sections state
+  const [advancedButtonsExpanded, setAdvancedButtonsExpanded] = useState(false);
 
   // Import configuration state
   const [importCSS, setImportCSS] = useState('');
@@ -1391,8 +1412,8 @@ const CSSCustomizer = () => {
     }
   };
 
-  // Function to get all available font families (including individual Typekit families)
-  const getAllFontFamilies = () => {
+  // Memoized function to get all available font families (including individual Typekit families)
+  const fontFamilies = useMemo(() => {
     const families = [];
     fonts.forEach(font => {
       if (font.type === 'typekit' && font.typekitFamilies && font.typekitFamilies.length > 0) {
@@ -1417,7 +1438,10 @@ const CSSCustomizer = () => {
       }
     });
     return families;
-  };
+  }, [fonts]);
+
+  // Helper function for backward compatibility
+  const getAllFontFamilies = useCallback(() => fontFamilies, [fontFamilies]);
 
   // Add new font
   const addFont = () => {
@@ -1881,16 +1905,16 @@ ${elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor || (elementS
   letter-spacing: ${typography.buttonLetterSpacing} !important;` : ''}${colors.button || elementStyles.buttons.secondaryBg ? `
   border: ${elementStyles.buttons.secondaryType === 'solid' ? `1px solid ${elementStyles.buttons.secondaryBg || 'var(--color-button)'}` : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || 'var(--color-button)'}`} !important;` : ''}
 }
-${elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHoverColor || (elementStyles.buttons.secondaryHoverType === 'solid' && (colors.button || colors.hover)) || (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
+${elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHoverColor || (elementStyles.buttons.secondaryHoverType === 'solid' && colors.button) || (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
 .ui.basic.button:hover, .DiscountCodeContainer .DiscountCode-Input .ui.button:hover,
 [data-testid="dont-cancel-btn"]:hover, .ModifyBooking .ModifyBooking-Column.left .actionButtons .rescheduleButton:hover,
 .ModifyBooking .ModifyBooking-Column.left .actionButtons .contactButton:hover,
-.TourPage-ContactGuide-link.ui.basic.button:hover {${elementStyles.buttons.secondaryHoverType === 'solid' ? (colors.button || colors.hover ? `
+.TourPage-ContactGuide-link.ui.basic.button:hover {${elementStyles.buttons.secondaryHoverType === 'solid' ? (colors.button ? `
   color: ${elementStyles.buttons.secondaryHoverColor || '#ffffff'} !important;
-  background: ${elementStyles.buttons.secondaryHoverBg || 'var(--color-hover)'} !important;` : '') : (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
+  background: ${elementStyles.buttons.secondaryHoverBg || 'var(--color-button)'} !important;` : '') : (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
   color: ${elementStyles.buttons.secondaryHoverColor || 'var(--color-button)'} !important;` : `${elementStyles.buttons.secondaryHoverBg ? `
   background-color: ${elementStyles.buttons.secondaryHoverBg} !important;` : ''}${elementStyles.buttons.secondaryHoverColor ? `
-  color: ${elementStyles.buttons.secondaryHoverColor} !important;` : ''}`}${(elementStyles.buttons.secondaryHoverType === 'solid' && (colors.button || colors.hover || elementStyles.buttons.secondaryHoverBg)) ? `
+  color: ${elementStyles.buttons.secondaryHoverColor} !important;` : ''}`}${(elementStyles.buttons.secondaryHoverType === 'solid' && (colors.button || elementStyles.buttons.secondaryHoverBg)) ? `
   border: 1px solid ${elementStyles.buttons.secondaryHoverBg || 'var(--color-button)'} !important;` : (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) ? `
   border: ${elementStyles.buttons.secondaryHoverBorderWidth} ${elementStyles.buttons.secondaryHoverBorderStyle} var(--color-button) !important;` : ''}
 }
@@ -2205,9 +2229,14 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
     return css;
   };
 
+  // Memoized CSS for preview (avoids regenerating on every render)
+  const generatedCSS = useMemo(() => generateCSS(), [
+    fonts, colors, typography, elementStyles, isDarkTheme, advancedCSS, customSnippets
+  ]);
+
   // Export CSS
   const exportCSS = () => {
-    const css = generateCSS();
+    const css = generatedCSS;
     const blob = new Blob([css], { type: 'text/css' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -2221,8 +2250,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 
   // Copy CSS
   const copyCSS = () => {
-    const css = generateCSS();
-    navigator.clipboard.writeText(css);
+    navigator.clipboard.writeText(generatedCSS);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -2231,6 +2259,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
     setColors({
       body: '#ffffff',
       heading: '#ffffff',
+      link: '',
       button: '',
       hover: '',
       brand: '',
@@ -2239,8 +2268,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
     setIsDarkTheme(true);
   };
 
-  // Calculate summary stats
-  const getSummaryStats = () => {
+  // Memoized summary stats
+  const summaryStats = useMemo(() => {
     const fontCount = fonts.filter(f => f.name || f.googleLink || f.typekitUrl).length;
     const colorCount = Object.values(colors).filter(c => c).length;
     const hasFonts = fontCount > 0 || typography.bodyFont || typography.headingFont || typography.buttonFont;
@@ -2259,7 +2288,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
       needsStripe,
       darkTheme: isDarkTheme
     };
-  };
+  }, [fonts, colors, typography, elementStyles.buttons, isDarkTheme]);
+
+  // Helper function for backward compatibility
+  const getSummaryStats = useCallback(() => summaryStats, [summaryStats]);
 
   const sections = [
     { id: 'start', label: 'Getting Started', icon: '🚀' },
@@ -2422,8 +2454,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
               </div>
 
               {/* About This Tool */}
-              <div style={{ background: '#f0f4ff', padding: '24px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #3D57FF' }}>
-                <h3 style={{ fontSize: '18px', color: '#333333', marginTop: 0, marginBottom: '16px' }}>📘 What This Tool Does</h3>
+              <div style={{ background: '#EBF5FF', padding: '24px', borderRadius: '12px', marginBottom: '32px', border: '1px solid #2E6AB3' }}>
+                <h3 style={{ fontSize: '18px', color: '#1E4A7D', marginTop: 0, marginBottom: '16px' }}>📘 What This Tool Does</h3>
                 <p style={{ margin: '0 0 12px 0', lineHeight: '1.6', color: '#333' }}>
                   This tool generates custom CSS stylesheets for <strong>AnyRoad booking plugins</strong>. 
                   Your CSS will control the appearance of:
@@ -2549,16 +2581,16 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 
               {/* Contextual Help Banner */}
               <div style={{
-                background: '#f0f4ff',
+                background: '#EBF5FF',
                 padding: '16px',
                 borderRadius: '8px',
                 marginBottom: '24px',
-                border: '1px solid #3D57FF',
+                border: '1px solid #2E6AB3',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 color: '#555'
               }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3D57FF' }}>💡 About Fonts</div>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1E4A7D' }}>💡 About Fonts</div>
                 <div>Your fonts will be used for <strong>Body Text</strong>, <strong>Headings</strong>, and <strong>Buttons</strong> throughout the booking experience.</div>
               </div>
 
@@ -2832,22 +2864,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                                     }}
                                   >
                                     <optgroup label="Sans-serif">
-                                      {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
                                     <optgroup label="Serif">
-                                      {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
                                     <optgroup label="Monospace">
-                                      {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
                                     <optgroup label="Generic">
-                                      {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
@@ -3061,22 +3093,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                                     }}
                                   >
                                     <optgroup label="Sans-serif">
-                                      {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
                                     <optgroup label="Serif">
-                                      {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
                                     <optgroup label="Monospace">
-                                      {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
                                     <optgroup label="Generic">
-                                      {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
+                                      {FALLBACK_FONT_OPTIONS.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
                                         <option key={option.value} value={option.value}>{option.label}</option>
                                       ))}
                                     </optgroup>
@@ -3161,22 +3193,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           }}
                         >
                           <optgroup label="Sans-serif Fonts">
-                            {fallbackFontOptions.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
+                            {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'sans-serif' && f.value !== 'sans-serif').map(option => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </optgroup>
                           <optgroup label="Serif Fonts">
-                            {fallbackFontOptions.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
+                            {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'serif' && f.value !== 'serif').map(option => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </optgroup>
                           <optgroup label="Monospace Fonts">
-                            {fallbackFontOptions.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
+                            {FALLBACK_FONT_OPTIONS.filter(f => f.generic === 'monospace' && f.value !== 'monospace').map(option => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </optgroup>
                           <optgroup label="Generic Families">
-                            {fallbackFontOptions.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
+                            {FALLBACK_FONT_OPTIONS.filter(f => f.value === f.generic || f.label.includes('generic')).map(option => (
                               <option key={option.value} value={option.value}>{option.label}</option>
                             ))}
                           </optgroup>
@@ -3427,16 +3459,16 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 
               {/* Contextual Help Banner */}
               <div style={{
-                background: '#f0f4ff',
+                background: '#EBF5FF',
                 padding: '16px',
                 borderRadius: '8px',
                 marginBottom: '24px',
-                border: '1px solid #3D57FF',
+                border: '1px solid #2E6AB3',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 color: '#555'
               }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3D57FF' }}>💡 About Colors</div>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1E4A7D' }}>💡 About Colors</div>
                 <div>These colors will be used across the entire booking experience. Leave fields blank to use plugin defaults.</div>
               </div>
               
@@ -3478,7 +3510,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={colors.body || '#000000'}
+                          value={colors.body && !isTransparent(colors.body) ? colors.body : '#000000'}
                           onChange={(e) => setColors({ ...colors, body: e.target.value })}
                           style={{
                             width: '100%',
@@ -3486,12 +3518,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            opacity: colors.body ? 1 : 0,
+                            opacity: colors.body && !isTransparent(colors.body) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(colors.body) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '8px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!colors.body && (
                           <div style={{
                             width: '100%',
@@ -3557,7 +3599,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={colors.heading || '#000000'}
+                          value={colors.heading && !isTransparent(colors.heading) ? colors.heading : '#000000'}
                           onChange={(e) => setColors({ ...colors, heading: e.target.value })}
                           style={{
                             width: '100%',
@@ -3565,12 +3607,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            opacity: colors.heading ? 1 : 0,
+                            opacity: colors.heading && !isTransparent(colors.heading) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(colors.heading) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '8px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!colors.heading && (
                           <div style={{
                             width: '100%',
@@ -3644,7 +3696,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                           <input
                             type="color"
-                            value={colors[key] || '#000000'}
+                            value={colors[key] && !isTransparent(colors[key]) ? colors[key] : '#000000'}
                             onChange={(e) => setColors({ ...colors, [key]: e.target.value })}
                             style={{
                               width: '100%',
@@ -3652,12 +3704,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '2px solid #ddd',
                               borderRadius: '8px',
                               cursor: 'pointer',
-                              opacity: colors[key] ? 1 : 0,
+                              opacity: colors[key] && !isTransparent(colors[key]) ? 1 : 0,
                               position: 'absolute',
                               top: 0,
                               left: 0
                             }}
                           />
+                          {isTransparent(colors[key]) && (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              border: '2px solid #ddd',
+                              borderRadius: '8px',
+                              ...transparentCheckerboard,
+                              pointerEvents: 'none'
+                            }} />
+                          )}
                           {!colors[key] && (
                             <div style={{
                               width: '100%',
@@ -3795,7 +3857,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={colors.titleOverride || '#000000'}
+                          value={colors.titleOverride && !isTransparent(colors.titleOverride) ? colors.titleOverride : '#000000'}
                           onChange={(e) => setColors({ ...colors, titleOverride: e.target.value })}
                           style={{
                             width: '100%',
@@ -3803,12 +3865,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            opacity: colors.titleOverride ? 1 : 0,
+                            opacity: colors.titleOverride && !isTransparent(colors.titleOverride) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(colors.titleOverride) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '8px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!colors.titleOverride && (
                           <div style={{
                             width: '100%',
@@ -3832,7 +3904,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         type="text"
                         value={colors.titleOverride || ''}
                         onChange={(e) => setColors({ ...colors, titleOverride: e.target.value })}
-                        placeholder="Leave empty to use heading color"
+                        placeholder="#000000"
                         style={{
                           flex: 1,
                          minWidth: 0,
@@ -3896,7 +3968,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={colors.subtitleOverride || '#000000'}
+                          value={colors.subtitleOverride && !isTransparent(colors.subtitleOverride) ? colors.subtitleOverride : '#000000'}
                           onChange={(e) => setColors({ ...colors, subtitleOverride: e.target.value })}
                           style={{
                             width: '100%',
@@ -3904,12 +3976,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            opacity: colors.subtitleOverride ? 1 : 0,
+                            opacity: colors.subtitleOverride && !isTransparent(colors.subtitleOverride) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(colors.subtitleOverride) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '8px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!colors.subtitleOverride && (
                           <div style={{
                             width: '100%',
@@ -3933,7 +4015,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         type="text"
                         value={colors.subtitleOverride || ''}
                         onChange={(e) => setColors({ ...colors, subtitleOverride: e.target.value })}
-                        placeholder="Leave empty to use heading color"
+                        placeholder="#000000"
                         style={{
                           flex: 1,
                          minWidth: 0,
@@ -3982,16 +4064,16 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 
               {/* Contextual Help Banner */}
               <div style={{
-                background: '#f0f4ff',
+                background: '#EBF5FF',
                 padding: '16px',
                 borderRadius: '8px',
                 marginBottom: '16px',
-                border: '1px solid #3D57FF',
+                border: '1px solid #2E6AB3',
                 fontSize: '13px',
                 lineHeight: '1.6',
                 color: '#555'
               }}>
-                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#3D57FF' }}>💡 Size Fields</div>
+                <div style={{ fontWeight: '600', marginBottom: '4px', color: '#1E4A7D' }}>💡 Size Fields</div>
                 <div>Leave size fields blank to use plugin defaults.</div>
               </div>
               
@@ -4390,50 +4472,51 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     </select>
                   </div>
 
-                  {/* 4. Font Size */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Font Size
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.bodySize}
-                      onChange={(e) => setTypography({ ...typography, bodySize: e.target.value })}
-                      placeholder="14px"
-                      style={{
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'monospace'
-                      }}
-                    />
-                  </div>
+                  {/* 4. Font Size & Line Height */}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Font Size
+                      </label>
+                      <input
+                        type="text"
+                        value={typography.bodySize}
+                        onChange={(e) => setTypography({ ...typography, bodySize: e.target.value })}
+                        placeholder="14px"
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
 
-                  {/* 5. Line Height */}
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Line Height
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.bodyLineHeight}
-                      onChange={(e) => setTypography({ ...typography, bodyLineHeight: e.target.value })}
-                      placeholder="1.5"
-                      style={{
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'monospace'
-                      }}
-                    />
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Line Height
+                      </label>
+                      <input
+                        type="text"
+                        value={typography.bodyLineHeight}
+                        onChange={(e) => setTypography({ ...typography, bodyLineHeight: e.target.value })}
+                        placeholder="1.5"
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -4559,53 +4642,54 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     </select>
                   </div>
 
-                  {/* 4. Font Size */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Font Size
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.buttonFontSize}
-                      onChange={(e) => setTypography({ ...typography, buttonFontSize: e.target.value })}
-                      placeholder="14px"
-                      style={{
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'monospace'
-                      }}
-                    />
+                  {/* 4. Font Size & Line Height */}
+                  <div style={{ marginBottom: '16px', display: 'flex', gap: '12px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Font Size
+                      </label>
+                      <input
+                        type="text"
+                        value={typography.buttonFontSize}
+                        onChange={(e) => setTypography({ ...typography, buttonFontSize: e.target.value })}
+                        placeholder="14px"
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
+                        Line Height
+                      </label>
+                      <input
+                        type="text"
+                        value={typography.buttonLineHeight}
+                        onChange={(e) => setTypography({ ...typography, buttonLineHeight: e.target.value })}
+                        placeholder="1"
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          padding: '10px',
+                          border: '1px solid #ddd',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                    </div>
                   </div>
 
-                  {/* 5. Line Height */}
-                  <div style={{ marginBottom: '16px' }}>
-                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
-                      Line Height
-                    </label>
-                    <input
-                      type="text"
-                      value={typography.buttonLineHeight}
-                      onChange={(e) => setTypography({ ...typography, buttonLineHeight: e.target.value })}
-                      placeholder="1"
-                      style={{
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        padding: '10px',
-                        border: '1px solid #ddd',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        fontFamily: 'monospace'
-                      }}
-                    />
-                  </div>
-
-                  {/* 6. Letter Spacing */}
+                  {/* 5. Letter Spacing */}
                   <div>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
                       Letter Spacing
@@ -4655,8 +4739,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
 
                 {/* Checkout H2 Font Size - Advanced Setting */}
                 <div style={{
-                  background: '#f0f4ff',
-                  border: '2px solid #3D57FF',
+                  background: '#EEEAF7',
+                  border: '2px solid #2D1D81',
                   borderRadius: '12px',
                   padding: '24px',
                   marginTop: '24px'
@@ -4668,13 +4752,13 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     marginBottom: '16px'
                   }}>
                     <span style={{ fontSize: '20px' }}>⚙️</span>
-                    <h3 style={{ margin: 0, fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                    <h3 style={{ margin: 0, fontSize: '18px', color: '#2D1D81', fontWeight: '600' }}>
                       Checkout H2 Font Size (Advanced)
                     </h3>
                   </div>
                   <div style={{
                     fontSize: '14px',
-                    color: '#4338ca',
+                    color: '#2D1D81',
                     marginBottom: '16px',
                     lineHeight: '1.6'
                   }}>
@@ -4684,7 +4768,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     background: 'white',
                     padding: '16px',
                     borderRadius: '8px',
-                    border: '1px solid #d0d9ff'
+                    border: '1px solid #B8B0D1'
                   }}>
                     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555' }}>
                       Font Size
@@ -4722,15 +4806,60 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   {/* Live Preview */}
                   <div style={{ 
                     marginBottom: '24px', 
-                    padding: '24px', 
-                    background: '#f8f9fa', 
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
+                    background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)',
+                    borderRadius: '16px',
+                    padding: '4px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1) inset'
                   }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Live Preview
+                    {/* Browser-like header */}
+                    <div style={{
+                      background: 'linear-gradient(180deg, #2d2d44 0%, #252538 100%)',
+                      borderRadius: '12px 12px 0 0',
+                      padding: '10px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f57' }} />
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }} />
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#28ca42' }} />
+                      </div>
+                      <div style={{
+                        flex: 1,
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        fontSize: '11px',
+                        color: '#888',
+                        fontFamily: 'monospace',
+                        marginLeft: '8px'
+                      }}>
+                        booking.anyroad.com/checkout
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Preview content area */}
+                    <div style={{ 
+                      background: colors.background || '#ffffff',
+                      borderRadius: '0 0 12px 12px',
+                      padding: '32px',
+                      minHeight: '120px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '16px'
+                    }}>
+                      <div style={{ 
+                        fontSize: '11px', 
+                        fontWeight: '600', 
+                        color: colors.body || '#666', 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '1.5px',
+                        opacity: 0.6
+                      }}>
+                        Primary Button Preview
+                      </div>
                       <button
                         style={{
                           fontFamily: typography.buttonFont ? buildFontStack(typography.buttonFont, getFontFallback(typography.buttonFont)) : 'inherit',
@@ -4743,7 +4872,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           fontSize: typography.buttonFontSize || '14px',
                           letterSpacing: typography.buttonLetterSpacing || 'normal',
                           border: elementStyles.buttons.primaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.primaryBorderWidth} ${elementStyles.buttons.primaryBorderStyle} ${elementStyles.buttons.primaryBorderColor === 'button' ? (colors.button || '#3D57FF') : elementStyles.buttons.primaryBorderColor}`,
-                          padding: '10px 20px',
+                          padding: '12px 32px',
                           cursor: 'pointer',
                           ...(elementStyles.buttons.primaryTransition && elementStyles.buttons.primaryTransition !== 'none' ? { transition: elementStyles.buttons.primaryTransition } : {})
                         }}
@@ -4771,9 +4900,9 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           e.target.style.border = elementStyles.buttons.primaryType === 'solid' ? `1px solid ${colors.button || '#3D57FF'}` : `${elementStyles.buttons.primaryBorderWidth} ${elementStyles.buttons.primaryBorderStyle} ${elementStyles.buttons.primaryBorderColor === 'button' ? (colors.button || '#3D57FF') : elementStyles.buttons.primaryBorderColor}`;
                         }}
                       >
-                        Primary Button
+                        Book Now
                       </button>
-                      <span style={{ fontSize: '12px', color: '#999' }}>Hover to see hover state</span>
+                      <span style={{ fontSize: '11px', color: colors.body || '#999', opacity: 0.5 }}>Hover to preview hover state</span>
                     </div>
                   </div>
                   
@@ -4844,7 +4973,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={elementStyles.buttons.primaryColor || '#000000'}
+                          value={elementStyles.buttons.primaryColor && !isTransparent(elementStyles.buttons.primaryColor) ? elementStyles.buttons.primaryColor : '#000000'}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, primaryColor: e.target.value }
@@ -4855,12 +4984,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: elementStyles.buttons.primaryColor ? 1 : 0,
+                            opacity: elementStyles.buttons.primaryColor && !isTransparent(elementStyles.buttons.primaryColor) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(elementStyles.buttons.primaryColor) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '6px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!elementStyles.buttons.primaryColor && (
                           <div style={{
                             width: '100%',
@@ -5110,13 +5249,13 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   <div style={{ 
                     marginTop: '32px', 
                     padding: '20px', 
-                    background: 'linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%)', 
+                    background: 'linear-gradient(135deg, #EEEAF7 0%, #F5F3FA 100%)', 
                     borderRadius: '12px',
-                    border: '2px solid #e0e7ff'
+                    border: '2px solid #2D1D81'
                   }}>
                     <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '18px' }}>✨</span>
-                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#2D1D81', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Hover State
                       </h4>
                     </div>
@@ -5188,7 +5327,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={elementStyles.buttons.hoverColor || '#000000'}
+                          value={elementStyles.buttons.hoverColor && !isTransparent(elementStyles.buttons.hoverColor) ? elementStyles.buttons.hoverColor : '#000000'}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, hoverColor: e.target.value }
@@ -5199,12 +5338,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: elementStyles.buttons.hoverColor ? 1 : 0,
+                            opacity: elementStyles.buttons.hoverColor && !isTransparent(elementStyles.buttons.hoverColor) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(elementStyles.buttons.hoverColor) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '6px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!elementStyles.buttons.hoverColor && (
                           <div style={{
                             width: '100%',
@@ -5462,15 +5611,60 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   {/* Live Preview */}
                   <div style={{ 
                     marginBottom: '24px', 
-                    padding: '24px', 
-                    background: '#f8f9fa', 
-                    borderRadius: '8px',
-                    border: '1px solid #e0e0e0'
+                    background: 'linear-gradient(145deg, #1a1a2e 0%, #16213e 100%)',
+                    borderRadius: '16px',
+                    padding: '4px',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255,255,255,0.1) inset'
                   }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#666', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                      Live Preview
+                    {/* Browser-like header */}
+                    <div style={{
+                      background: 'linear-gradient(180deg, #2d2d44 0%, #252538 100%)',
+                      borderRadius: '12px 12px 0 0',
+                      padding: '10px 16px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f57' }} />
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }} />
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#28ca42' }} />
+                      </div>
+                      <div style={{
+                        flex: 1,
+                        background: 'rgba(0,0,0,0.3)',
+                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        fontSize: '11px',
+                        color: '#888',
+                        fontFamily: 'monospace',
+                        marginLeft: '8px'
+                      }}>
+                        booking.anyroad.com/experiences
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Preview content area */}
+                    <div style={{ 
+                      background: colors.background || '#ffffff',
+                      borderRadius: '0 0 12px 12px',
+                      padding: '32px',
+                      minHeight: '120px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '16px'
+                    }}>
+                      <div style={{ 
+                        fontSize: '11px', 
+                        fontWeight: '600', 
+                        color: colors.body || '#666', 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '1.5px',
+                        opacity: 0.6
+                      }}>
+                        Secondary Button Preview
+                      </div>
                       <button
                         style={{
                           fontFamily: typography.buttonFont ? buildFontStack(typography.buttonFont, getFontFallback(typography.buttonFont)) : 'inherit',
@@ -5483,13 +5677,13 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           fontSize: typography.buttonFontSize || '14px',
                           letterSpacing: typography.buttonLetterSpacing || 'normal',
                           border: elementStyles.buttons.secondaryType === 'solid' ? `1px solid ${elementStyles.buttons.secondaryBg || colors.button || '#3D57FF'}` : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || (colors.button ? colors.button : '#3D57FF')}`,
-                          padding: '10px 20px',
+                          padding: '12px 32px',
                           cursor: 'pointer',
                           ...(elementStyles.buttons.secondaryTransition && elementStyles.buttons.secondaryTransition !== 'none' ? { transition: elementStyles.buttons.secondaryTransition } : {})
                         }}
                         onMouseEnter={(e) => {
                           if (elementStyles.buttons.secondaryHoverType === 'solid' && (colors.button || colors.hover)) {
-                            e.target.style.backgroundColor = elementStyles.buttons.secondaryHoverBg || colors.hover || '#3D57FF';
+                            e.target.style.backgroundColor = elementStyles.buttons.secondaryHoverBg || colors.button || '#3D57FF';
                             e.target.style.color = elementStyles.buttons.secondaryHoverColor || '#ffffff';
                             e.target.style.border = `1px solid ${elementStyles.buttons.secondaryHoverBg || colors.button || colors.hover || '#3D57FF'}`;
                           } else if (elementStyles.buttons.secondaryHoverType === 'outlined' && colors.button) {
@@ -5510,9 +5704,9 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           e.target.style.border = elementStyles.buttons.secondaryType === 'solid' ? `1px solid ${elementStyles.buttons.secondaryBg || colors.button || '#3D57FF'}` : `${elementStyles.buttons.secondaryBorderWidth} ${elementStyles.buttons.secondaryBorderStyle} ${elementStyles.buttons.secondaryBorderColor || (colors.button ? colors.button : '#3D57FF')}`;
                         }}
                       >
-                        Secondary Button
+                        View Details
                       </button>
-                      <span style={{ fontSize: '12px', color: '#999' }}>Hover to see hover state</span>
+                      <span style={{ fontSize: '11px', color: colors.body || '#999', opacity: 0.5 }}>Hover to preview hover state</span>
                     </div>
                   </div>
                   
@@ -5583,7 +5777,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={(elementStyles.buttons.secondaryColor || (elementStyles.buttons.secondaryType === 'solid' ? '#ffffff' : colors.button) || '#000000')}
+                          value={(() => {
+                            const val = elementStyles.buttons.secondaryColor || (elementStyles.buttons.secondaryType === 'solid' ? '#ffffff' : colors.button) || '#000000';
+                            return isTransparent(val) ? '#000000' : val;
+                          })()}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, secondaryColor: e.target.value }
@@ -5594,12 +5791,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: (elementStyles.buttons.secondaryColor || elementStyles.buttons.secondaryType === 'solid' || colors.button) ? 1 : 0,
+                            opacity: (elementStyles.buttons.secondaryColor || elementStyles.buttons.secondaryType === 'solid' || colors.button) && !isTransparent(elementStyles.buttons.secondaryColor) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(elementStyles.buttons.secondaryColor) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '6px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!(elementStyles.buttons.secondaryColor || elementStyles.buttons.secondaryType === 'solid' || colors.button) && (
                           <div style={{
                             width: '100%',
@@ -5661,7 +5868,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                           <input
                             type="color"
-                            value={elementStyles.buttons.secondaryBg || (colors.button || '#000000')}
+                            value={(() => {
+                              const val = elementStyles.buttons.secondaryBg || colors.button || '#000000';
+                              return isTransparent(val) ? '#000000' : val;
+                            })()}
                             onChange={(e) => setElementStyles({
                               ...elementStyles,
                               buttons: { ...elementStyles.buttons, secondaryBg: e.target.value }
@@ -5672,12 +5882,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '2px solid #ddd',
                               borderRadius: '6px',
                               cursor: 'pointer',
-                              opacity: elementStyles.buttons.secondaryBg || colors.button ? 1 : 0,
+                              opacity: (elementStyles.buttons.secondaryBg || colors.button) && !isTransparent(elementStyles.buttons.secondaryBg) ? 1 : 0,
                               position: 'absolute',
                               top: 0,
                               left: 0
                             }}
                           />
+                          {isTransparent(elementStyles.buttons.secondaryBg) && (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              border: '2px solid #ddd',
+                              borderRadius: '6px',
+                              ...transparentCheckerboard,
+                              pointerEvents: 'none'
+                            }} />
+                          )}
                           {!(elementStyles.buttons.secondaryBg || colors.button) && (
                             <div style={{
                               width: '100%',
@@ -5792,7 +6012,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                             <input
                               type="color"
-                              value={(elementStyles.buttons.secondaryBorderColor || colors.button || '#000000')}
+                              value={(() => {
+                                const val = elementStyles.buttons.secondaryBorderColor || colors.button || '#000000';
+                                return isTransparent(val) ? '#000000' : val;
+                              })()}
                               onChange={(e) => setElementStyles({
                                 ...elementStyles,
                                 buttons: { ...elementStyles.buttons, secondaryBorderColor: e.target.value }
@@ -5803,12 +6026,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                                 border: '2px solid #ddd',
                                 borderRadius: '6px',
                                 cursor: 'pointer',
-                                opacity: (elementStyles.buttons.secondaryBorderColor || colors.button) ? 1 : 0,
+                                opacity: (elementStyles.buttons.secondaryBorderColor || colors.button) && !isTransparent(elementStyles.buttons.secondaryBorderColor) ? 1 : 0,
                                 position: 'absolute',
                                 top: 0,
                                 left: 0
                               }}
                             />
+                            {isTransparent(elementStyles.buttons.secondaryBorderColor) && (
+                              <div style={{
+                                width: '100%',
+                                height: '100%',
+                                border: '2px solid #ddd',
+                                borderRadius: '6px',
+                                ...transparentCheckerboard,
+                                pointerEvents: 'none'
+                              }} />
+                            )}
                             {!(elementStyles.buttons.secondaryBorderColor || colors.button) && (
                               <div style={{
                                 width: '100%',
@@ -5892,13 +6125,13 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   <div style={{ 
                     marginTop: '32px', 
                     padding: '20px', 
-                    background: 'linear-gradient(135deg, #f0f4ff 0%, #f8f9ff 100%)', 
+                    background: 'linear-gradient(135deg, #EEEAF7 0%, #F5F3FA 100%)', 
                     borderRadius: '12px',
-                    border: '2px solid #e0e7ff'
+                    border: '2px solid #2D1D81'
                   }}>
                     <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '18px' }}>✨</span>
-                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#333333', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#2D1D81', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                         Hover State
                       </h4>
                     </div>
@@ -5970,7 +6203,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={elementStyles.buttons.secondaryHoverColor || (elementStyles.buttons.secondaryHoverType === 'solid' ? '#ffffff' : (colors.button || '#000000'))}
+                          value={(() => {
+                            const val = elementStyles.buttons.secondaryHoverColor || (elementStyles.buttons.secondaryHoverType === 'solid' ? '#ffffff' : (colors.button || '#000000'));
+                            return isTransparent(val) ? '#000000' : val;
+                          })()}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             buttons: { ...elementStyles.buttons, secondaryHoverColor: e.target.value }
@@ -5981,12 +6217,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: elementStyles.buttons.secondaryHoverColor || elementStyles.buttons.secondaryHoverType === 'solid' || colors.button ? 1 : 0,
+                            opacity: (elementStyles.buttons.secondaryHoverColor || elementStyles.buttons.secondaryHoverType === 'solid' || colors.button) && !isTransparent(elementStyles.buttons.secondaryHoverColor) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(elementStyles.buttons.secondaryHoverColor) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '6px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!(elementStyles.buttons.secondaryHoverColor || elementStyles.buttons.secondaryHoverType === 'solid' || colors.button) && (
                           <div style={{
                             width: '100%',
@@ -6048,7 +6294,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                           <input
                             type="color"
-                            value={elementStyles.buttons.secondaryHoverBg || (colors.hover || '#000000')}
+                            value={(() => {
+                              const val = elementStyles.buttons.secondaryHoverBg || colors.button || '#000000';
+                              return isTransparent(val) ? '#000000' : val;
+                            })()}
                             onChange={(e) => setElementStyles({
                               ...elementStyles,
                               buttons: { ...elementStyles.buttons, secondaryHoverBg: e.target.value }
@@ -6059,13 +6308,23 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '2px solid #ddd',
                               borderRadius: '6px',
                               cursor: 'pointer',
-                              opacity: elementStyles.buttons.secondaryHoverBg || colors.hover ? 1 : 0,
+                              opacity: (elementStyles.buttons.secondaryHoverBg || colors.button) && !isTransparent(elementStyles.buttons.secondaryHoverBg) ? 1 : 0,
                               position: 'absolute',
                               top: 0,
                               left: 0
                             }}
                           />
-                          {!(elementStyles.buttons.secondaryHoverBg || colors.hover) && (
+                          {isTransparent(elementStyles.buttons.secondaryHoverBg) && (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              border: '2px solid #ddd',
+                              borderRadius: '6px',
+                              ...transparentCheckerboard,
+                              pointerEvents: 'none'
+                            }} />
+                          )}
+                          {!(elementStyles.buttons.secondaryHoverBg || colors.button) && (
                             <div style={{
                               width: '100%',
                               height: '100%',
@@ -6092,7 +6351,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               ...elementStyles,
                               buttons: { ...elementStyles.buttons, secondaryHoverBg: e.target.value }
                             })}
-                            placeholder={colors.hover || 'var(--color-hover)'}
+                            placeholder={colors.button || 'var(--color-button)'}
                             style={{
                               width: '100%',
                               minWidth: 0,
@@ -6110,7 +6369,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             color: '#999',
                             marginTop: '4px'
                           }}>
-                            {elementStyles.buttons.secondaryHoverBg ? 'Custom override' : `Default: ${colors.hover || 'hover color'}`}
+                            {elementStyles.buttons.secondaryHoverBg ? 'Custom override' : `Default: ${colors.button || 'button color'}`}
                           </div>
                         </div>
                       </div>
@@ -6268,152 +6527,210 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
               </div>
 
               {/* ============================================ */}
-              {/* MOBILE EXPERIENCE LIST BUTTON - ADVANCED */}
+              {/* ADVANCED BUTTON SETTINGS - COLLAPSIBLE */}
               {/* ============================================ */}
               <div style={{
-                background: '#f0f4ff',
-                border: '2px solid #3D57FF',
+                background: '#EEEAF7',
+                border: '2px solid #2D1D81',
                 borderRadius: '16px',
-                padding: '32px',
-                marginTop: '32px'
+                marginTop: '32px',
+                overflow: 'hidden'
               }}>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '12px',
-                  marginBottom: '24px'
-                }}>
-                  <div style={{ fontSize: '24px', lineHeight: '1' }}>⚙️</div>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ 
-                      margin: '0 0 8px 0', 
-                      fontSize: '18px', 
-                      color: '#4338ca', 
-                      fontWeight: '700'
-                    }}>
-                      Mobile Experience List Button (Advanced)
-                    </h3>
-                    <p style={{ 
-                      margin: 0, 
-                      fontSize: '14px', 
-                      color: '#4338ca', 
-                      lineHeight: '1.6' 
-                    }}>
-                      Fine-tune the "Book Now" button dimensions on the Experience List page for mobile devices (600px and below). 
-                      These settings only apply to mobile view and don't affect other button styles.
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '20px' }}>
-                  {[
-                    { key: 'mobileListButtonWidth', label: 'Width', placeholder: '250px' },
-                    { key: 'mobileListButtonHeight', label: 'Height', placeholder: '50px' },
-                    { key: 'mobileListButtonMarginTop', label: 'Margin Top', placeholder: '16px' },
-                    { key: 'mobileListButtonMarginLeft', label: 'Margin Left', placeholder: '-2px' },
-                    { key: 'mobileListButtonPaddingTop', label: 'Padding Top', placeholder: '10px' }
-                  ].map(field => (
-                    <div key={field.key} style={{ 
-                      background: '#ffffff', 
-                      padding: '16px', 
-                      borderRadius: '8px',
-                      border: '1px solid #ddd'
-                    }}>
-                      <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '13px' }}>
-                        {field.label}
-                      </label>
-                      <input
-                        type="text"
-                        value={elementStyles.buttons[field.key]}
-                        onChange={(e) => setElementStyles({
-                          ...elementStyles,
-                          buttons: { ...elementStyles.buttons, [field.key]: e.target.value }
-                        })}
-                        placeholder={field.placeholder}
-                        style={{
-                          width: '100%',
-                          minWidth: 0,
-                          boxSizing: 'border-box',
-                          padding: '10px',
-                          border: '1px solid #ddd',
-                          borderRadius: '6px',
-                          fontSize: '14px',
-                          fontFamily: 'monospace'
-                        }}
-                      />
+                {/* Collapsible Header */}
+                <div 
+                  onClick={() => setAdvancedButtonsExpanded(!advancedButtonsExpanded)}
+                  style={{
+                    padding: '24px 32px',
+                    cursor: 'pointer',
+                    background: advancedButtonsExpanded ? '#E4DFF2' : '#EEEAF7',
+                    borderBottom: advancedButtonsExpanded ? '2px solid #2D1D81' : 'none',
+                    transition: 'all 0.3s ease',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    userSelect: 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ fontSize: '24px', lineHeight: '1' }}>⚙️</div>
+                    <div>
+                      <h3 style={{ 
+                        margin: '0 0 4px 0', 
+                        fontSize: '20px', 
+                        color: '#2D1D81', 
+                        fontWeight: '700'
+                      }}>
+                        Advanced Button Settings
+                      </h3>
+                      <p style={{ 
+                        margin: 0, 
+                        fontSize: '14px', 
+                        color: '#2D1D81', 
+                        lineHeight: '1.4' 
+                      }}>
+                        Optional fine-tuning for mobile buttons and purchase CTA
+                      </p>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Purchase CTA Button (Advanced) */}
-              <div style={{
-                background: '#f0f4ff',
-                border: '2px solid #3D57FF',
-                borderRadius: '16px',
-                padding: '32px',
-                marginBottom: '32px',
-                marginTop: '32px'
-              }}>
-                <div style={{
-                  background: '#ffffff',
-                  padding: '24px',
-                  borderRadius: '12px',
-                  marginBottom: '24px'
-                }}>
-                  <div>
-                    <h3 style={{ 
-                      margin: '0 0 12px 0', 
-                      fontSize: '20px', 
-                      color: '#333', 
-                      fontWeight: '600',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px'
-                    }}>
-                      ⚙️ Purchase CTA Button (Advanced)
-                    </h3>
-                    <p style={{ 
-                      margin: 0, 
-                      fontSize: '14px', 
-                      color: '#4338ca', 
-                      lineHeight: '1.6' 
-                    }}>
-                      Fine-tune the purchase/confirmation CTA for guest checkout.
-                    </p>
+                  </div>
+                  <div style={{
+                    fontSize: '24px',
+                    color: '#2D1D81',
+                    transform: advancedButtonsExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    transition: 'transform 0.3s ease'
+                  }}>
+                    ▼
                   </div>
                 </div>
 
-                <div style={{ 
-                  background: '#ffffff', 
-                  padding: '20px', 
-                  borderRadius: '12px',
-                  border: '1px solid #e0e0e0',
-                  maxWidth: '250px'
-                }}>
-                  <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '14px' }}>
-                    Button Height
-                  </label>
-                  <input
-                    type="text"
-                    value={elementStyles.buttons.purchaseButtonHeight}
-                    onChange={(e) => setElementStyles({
-                      ...elementStyles,
-                      buttons: { ...elementStyles.buttons, purchaseButtonHeight: e.target.value }
-                    })}
-                    placeholder="e.g., 50px"
-                    style={{
-                      width: '100%',
-                      minWidth: 0,
-                      boxSizing: 'border-box',
-                      padding: '10px',
-                      border: '1px solid #ddd',
-                      borderRadius: '6px',
-                      fontSize: '14px',
-                      fontFamily: 'monospace'
-                    }}
-                  />
-                </div>
+                {/* Collapsible Content */}
+                {advancedButtonsExpanded && (
+                  <div style={{ padding: '32px' }}>
+                    
+                    {/* Mobile Experience List Button */}
+                    <div style={{
+                      background: '#ffffff',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '12px',
+                      padding: '24px',
+                      marginBottom: '24px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        marginBottom: '20px'
+                      }}>
+                        <div style={{ fontSize: '20px', lineHeight: '1' }}>📱</div>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ 
+                            margin: '0 0 8px 0', 
+                            fontSize: '18px', 
+                            color: '#333', 
+                            fontWeight: '600'
+                          }}>
+                            Mobile Experience List Button
+                          </h4>
+                          <p style={{ 
+                            margin: 0, 
+                            fontSize: '13px', 
+                            color: '#666', 
+                            lineHeight: '1.6' 
+                          }}>
+                            Fine-tune the "Book Now" button dimensions on the Experience List page for mobile devices (600px and below). 
+                            These settings only apply to mobile view and don't affect other button styles.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                        {[
+                          { key: 'mobileListButtonWidth', label: 'Width', placeholder: '250px' },
+                          { key: 'mobileListButtonHeight', label: 'Height', placeholder: '50px' },
+                          { key: 'mobileListButtonMarginTop', label: 'Margin Top', placeholder: '16px' },
+                          { key: 'mobileListButtonMarginLeft', label: 'Margin Left', placeholder: '-2px' },
+                          { key: 'mobileListButtonPaddingTop', label: 'Padding Top', placeholder: '10px' }
+                        ].map(field => (
+                          <div key={field.key} style={{ 
+                            background: '#f9f9f9', 
+                            padding: '16px', 
+                            borderRadius: '8px',
+                            border: '1px solid #ddd'
+                          }}>
+                            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '13px' }}>
+                              {field.label}
+                            </label>
+                            <input
+                              type="text"
+                              value={elementStyles.buttons[field.key]}
+                              onChange={(e) => setElementStyles({
+                                ...elementStyles,
+                                buttons: { ...elementStyles.buttons, [field.key]: e.target.value }
+                              })}
+                              placeholder={field.placeholder}
+                              style={{
+                                width: '100%',
+                                minWidth: 0,
+                                boxSizing: 'border-box',
+                                padding: '10px',
+                                border: '1px solid #ddd',
+                                borderRadius: '6px',
+                                fontSize: '14px',
+                                fontFamily: 'monospace'
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Purchase CTA Button */}
+                    <div style={{
+                      background: '#ffffff',
+                      border: '2px solid #e0e0e0',
+                      borderRadius: '12px',
+                      padding: '24px'
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '12px',
+                        marginBottom: '20px'
+                      }}>
+                        <div style={{ fontSize: '20px', lineHeight: '1' }}>🛒</div>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{ 
+                            margin: '0 0 8px 0', 
+                            fontSize: '18px', 
+                            color: '#333', 
+                            fontWeight: '600'
+                          }}>
+                            Purchase CTA Button
+                          </h4>
+                          <p style={{ 
+                            margin: 0, 
+                            fontSize: '13px', 
+                            color: '#666', 
+                            lineHeight: '1.6' 
+                          }}>
+                            Fine-tune the purchase/confirmation CTA for guest checkout.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div style={{ 
+                        background: '#f9f9f9', 
+                        padding: '20px', 
+                        borderRadius: '8px',
+                        border: '1px solid #ddd',
+                        maxWidth: '250px'
+                      }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#555', fontSize: '14px' }}>
+                          Button Height
+                        </label>
+                        <input
+                          type="text"
+                          value={elementStyles.buttons.purchaseButtonHeight}
+                          onChange={(e) => setElementStyles({
+                            ...elementStyles,
+                            buttons: { ...elementStyles.buttons, purchaseButtonHeight: e.target.value }
+                          })}
+                          placeholder="e.g., 50px"
+                          style={{
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            padding: '10px',
+                            border: '1px solid #ddd',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -6501,7 +6818,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                           <input
                             type="color"
-                            value={elementStyles.inputs[field.key] || '#000000'}
+                            value={elementStyles.inputs[field.key] && !isTransparent(elementStyles.inputs[field.key]) ? elementStyles.inputs[field.key] : '#000000'}
                             onChange={(e) => setElementStyles({
                               ...elementStyles,
                               inputs: { ...elementStyles.inputs, [field.key]: e.target.value }
@@ -6512,12 +6829,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '2px solid #ddd',
                               borderRadius: '8px',
                               cursor: 'pointer',
-                              opacity: elementStyles.inputs[field.key] ? 1 : 0,
+                              opacity: elementStyles.inputs[field.key] && !isTransparent(elementStyles.inputs[field.key]) ? 1 : 0,
                               position: 'absolute',
                               top: 0,
                               left: 0
                             }}
                           />
+                          {isTransparent(elementStyles.inputs[field.key]) && (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              border: '2px solid #ddd',
+                              borderRadius: '8px',
+                              ...transparentCheckerboard,
+                              pointerEvents: 'none'
+                            }} />
+                          )}
                           {!elementStyles.inputs[field.key] && (
                             <div style={{
                               width: '100%',
@@ -6617,7 +6944,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                     <input
                       type="color"
-                      value={(elementStyles.lists.backgroundColor || colors.background || '#FFFFFF')}
+                      value={(() => {
+                        const val = elementStyles.lists.backgroundColor || colors.background || '#FFFFFF';
+                        return isTransparent(val) ? '#000000' : val;
+                      })()}
                       onChange={(e) => setElementStyles({
                         ...elementStyles,
                         lists: { ...elementStyles.lists, backgroundColor: e.target.value }
@@ -6628,12 +6958,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         border: '2px solid #ddd',
                         borderRadius: '6px',
                         cursor: 'pointer',
-                        opacity: (elementStyles.lists.backgroundColor || colors.background) ? 1 : 0,
+                        opacity: (elementStyles.lists.backgroundColor || colors.background) && !isTransparent(elementStyles.lists.backgroundColor) ? 1 : 0,
                         position: 'absolute',
                         top: 0,
                         left: 0
                       }}
                     />
+                    {isTransparent(elementStyles.lists.backgroundColor) && (
+                      <div style={{
+                        width: '100%',
+                        height: '100%',
+                        border: '2px solid #ddd',
+                        borderRadius: '6px',
+                        ...transparentCheckerboard,
+                        pointerEvents: 'none'
+                      }} />
+                    )}
                     {!(elementStyles.lists.backgroundColor || colors.background) && (
                       <div style={{
                         width: '100%',
@@ -6873,7 +7213,10 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                       <input
                         type="color"
-                        value={elementStyles.experienceCard.borderColor || (colors.button || '#000000')}
+                        value={(() => {
+                          const val = elementStyles.experienceCard.borderColor || colors.button || '#000000';
+                          return isTransparent(val) ? '#000000' : val;
+                        })()}
                         onChange={(e) => setElementStyles({
                           ...elementStyles,
                           experienceCard: { ...elementStyles.experienceCard, borderColor: e.target.value }
@@ -6884,12 +7227,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '2px solid #ddd',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          opacity: elementStyles.experienceCard.borderColor || colors.button ? 1 : 0,
+                          opacity: (elementStyles.experienceCard.borderColor || colors.button) && !isTransparent(elementStyles.experienceCard.borderColor) ? 1 : 0,
                           position: 'absolute',
                           top: 0,
                           left: 0
                         }}
                       />
+                      {isTransparent(elementStyles.experienceCard.borderColor) && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          ...transparentCheckerboard,
+                          pointerEvents: 'none'
+                        }} />
+                      )}
                       {!(elementStyles.experienceCard.borderColor || colors.button) && (
                         <div style={{
                           width: '100%',
@@ -6977,7 +7330,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                       <input
                         type="color"
-                        value={elementStyles.atAGlance.zebraStripingColor || '#f6f6f6'}
+                        value={elementStyles.atAGlance.zebraStripingColor && !isTransparent(elementStyles.atAGlance.zebraStripingColor) ? elementStyles.atAGlance.zebraStripingColor : '#f6f6f6'}
                         onChange={(e) => setElementStyles({
                           ...elementStyles,
                           atAGlance: { ...elementStyles.atAGlance, zebraStripingColor: e.target.value }
@@ -6988,12 +7341,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '2px solid #ddd',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          opacity: elementStyles.atAGlance.zebraStripingColor ? 1 : 0,
+                          opacity: elementStyles.atAGlance.zebraStripingColor && !isTransparent(elementStyles.atAGlance.zebraStripingColor) ? 1 : 0,
                           position: 'absolute',
                           top: 0,
                           left: 0
                         }}
                       />
+                      {isTransparent(elementStyles.atAGlance.zebraStripingColor) && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          ...transparentCheckerboard,
+                          pointerEvents: 'none'
+                        }} />
+                      )}
                       {!elementStyles.atAGlance.zebraStripingColor && (
                         <div style={{
                           width: '100%',
@@ -7056,8 +7419,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   ➖ Dividers
                 </h3>
                 
-                <div style={{ marginBottom: '16px', padding: '16px', background: '#f0f4ff', border: '1px solid #d0d9ff', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '13px', color: '#4338ca', lineHeight: '1.6' }}>
+                <div style={{ marginBottom: '16px', padding: '16px', background: '#EBF5FF', border: '1px solid #2E6AB3', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: '#1E4A7D', lineHeight: '1.6' }}>
                     Configure the appearance of horizontal divider lines used throughout the booking experience to separate sections.
                   </div>
                 </div>
@@ -7130,7 +7493,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                         <input
                           type="color"
-                          value={elementStyles.dividers.color || '#e6e6e6'}
+                          value={elementStyles.dividers.color && !isTransparent(elementStyles.dividers.color) ? elementStyles.dividers.color : '#e6e6e6'}
                           onChange={(e) => setElementStyles({
                             ...elementStyles,
                             dividers: { ...elementStyles.dividers, color: e.target.value }
@@ -7141,12 +7504,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                             border: '2px solid #ddd',
                             borderRadius: '6px',
                             cursor: 'pointer',
-                            opacity: elementStyles.dividers.color ? 1 : 0,
+                            opacity: elementStyles.dividers.color && !isTransparent(elementStyles.dividers.color) ? 1 : 0,
                             position: 'absolute',
                             top: 0,
                             left: 0
                           }}
                         />
+                        {isTransparent(elementStyles.dividers.color) && (
+                          <div style={{
+                            width: '100%',
+                            height: '100%',
+                            border: '2px solid #ddd',
+                            borderRadius: '6px',
+                            ...transparentCheckerboard,
+                            pointerEvents: 'none'
+                          }} />
+                        )}
                         {!elementStyles.dividers.color && (
                           <div style={{
                             width: '100%',
@@ -7212,8 +7585,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   🧾 Checkout Summary
                 </h3>
                 
-                <div style={{ marginBottom: '16px', padding: '16px', background: '#f0f4ff', border: '1px solid #d0d9ff', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '13px', color: '#4338ca', lineHeight: '1.6' }}>
+                <div style={{ marginBottom: '16px', padding: '16px', background: '#EBF5FF', border: '1px solid #2E6AB3', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: '#1E4A7D', lineHeight: '1.6' }}>
                     Configure the background color of the checkout summary section (order details, pricing breakdown).
                   </div>
                 </div>
@@ -7231,7 +7604,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                       <input
                         type="color"
-                        value={elementStyles.checkoutSummary.backgroundColor || '#f2f2f2'}
+                        value={elementStyles.checkoutSummary.backgroundColor && !isTransparent(elementStyles.checkoutSummary.backgroundColor) ? elementStyles.checkoutSummary.backgroundColor : '#f2f2f2'}
                         onChange={(e) => setElementStyles({
                           ...elementStyles,
                           checkoutSummary: { ...elementStyles.checkoutSummary, backgroundColor: e.target.value }
@@ -7242,12 +7615,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '2px solid #ddd',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          opacity: elementStyles.checkoutSummary.backgroundColor ? 1 : 0,
+                          opacity: elementStyles.checkoutSummary.backgroundColor && !isTransparent(elementStyles.checkoutSummary.backgroundColor) ? 1 : 0,
                           position: 'absolute',
                           top: 0,
                           left: 0
                         }}
                       />
+                      {isTransparent(elementStyles.checkoutSummary.backgroundColor) && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          ...transparentCheckerboard,
+                          pointerEvents: 'none'
+                        }} />
+                      )}
                       {!elementStyles.checkoutSummary.backgroundColor && (
                         <div style={{
                           width: '100%',
@@ -7303,7 +7686,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{ position: 'relative', width: '50px', height: '50px', flexShrink: 0 }}>
                       <input
                         type="color"
-                        value={elementStyles.checkoutSummary.dividerColor || '#ccc'}
+                        value={elementStyles.checkoutSummary.dividerColor && !isTransparent(elementStyles.checkoutSummary.dividerColor) ? elementStyles.checkoutSummary.dividerColor : '#ccc'}
                         onChange={(e) => setElementStyles({
                           ...elementStyles,
                           checkoutSummary: { ...elementStyles.checkoutSummary, dividerColor: e.target.value }
@@ -7314,12 +7697,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                           border: '2px solid #ddd',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          opacity: elementStyles.checkoutSummary.dividerColor ? 1 : 0,
+                          opacity: elementStyles.checkoutSummary.dividerColor && !isTransparent(elementStyles.checkoutSummary.dividerColor) ? 1 : 0,
                           position: 'absolute',
                           top: 0,
                           left: 0
                         }}
                       />
+                      {isTransparent(elementStyles.checkoutSummary.dividerColor) && (
+                        <div style={{
+                          width: '100%',
+                          height: '100%',
+                          border: '2px solid #ddd',
+                          borderRadius: '6px',
+                          ...transparentCheckerboard,
+                          pointerEvents: 'none'
+                        }} />
+                      )}
                       {!elementStyles.checkoutSummary.dividerColor && (
                         <div style={{
                           width: '100%',
@@ -7404,7 +7797,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{
                       fontWeight: '700',
                       fontSize: '16px',
-                      color: '#4338ca',
+                      color: '#2D1D81',
                       marginBottom: '8px'
                     }}>
                       Beta Feature - Under Development
@@ -7412,7 +7805,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{
                       fontSize: '14px',
                       lineHeight: '1.6',
-                      color: '#4338ca'
+                      color: '#2D1D81'
                     }}>
                       Modal customization is still in beta and partially under development. This feature is not production-ready. 
                       Test thoroughly before deploying to live environments.
@@ -7456,7 +7849,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                         <div style={{ position: 'relative', width: '60px', height: '60px', flexShrink: 0 }}>
                           <input
                             type="color"
-                            value={elementStyles.modals[field.key] || '#000000'}
+                            value={elementStyles.modals[field.key] && !isTransparent(elementStyles.modals[field.key]) ? elementStyles.modals[field.key] : '#000000'}
                             onChange={(e) => setElementStyles({
                               ...elementStyles,
                               modals: { ...elementStyles.modals, [field.key]: e.target.value }
@@ -7467,12 +7860,22 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                               border: '2px solid #ddd',
                               borderRadius: '8px',
                               cursor: 'pointer',
-                              opacity: elementStyles.modals[field.key] ? 1 : 0,
+                              opacity: elementStyles.modals[field.key] && !isTransparent(elementStyles.modals[field.key]) ? 1 : 0,
                               position: 'absolute',
                               top: 0,
                               left: 0
                             }}
                           />
+                          {isTransparent(elementStyles.modals[field.key]) && (
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              border: '2px solid #ddd',
+                              borderRadius: '8px',
+                              ...transparentCheckerboard,
+                              pointerEvents: 'none'
+                            }} />
+                          )}
                           {!elementStyles.modals[field.key] && (
                             <div style={{
                               width: '100%',
@@ -7544,8 +7947,8 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
               <h2 style={{ marginBottom: '24px', fontSize: '24px', color: '#333' }}>Advanced CSS Options</h2>
               
               <div style={{
-                background: '#f0f4ff',
-                border: '2px solid #3D57FF',
+                background: '#EBF5FF',
+                border: '2px solid #2E6AB3',
                 borderRadius: '12px',
                 padding: '20px',
                 marginBottom: '24px'
@@ -7560,7 +7963,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{
                       fontWeight: '700',
                       fontSize: '16px',
-                      color: '#4338ca',
+                      color: '#1E4A7D',
                       marginBottom: '8px'
                     }}>
                       About Advanced CSS
@@ -7568,7 +7971,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                     <div style={{
                       fontSize: '14px',
                       lineHeight: '1.6',
-                      color: '#4338ca'
+                      color: '#1E4A7D'
                     }}>
                       These are pre-configured CSS fixes for common styling issues. Enable only the fixes you need.
                     </div>
@@ -8224,11 +8627,11 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                   cursor: 'pointer',
                   fontWeight: '600',
                   fontSize: '13px',
-                  color: '#3D57FF',
+                  color: '#1E4A7D',
                   padding: '8px',
-                  background: '#f0f4ff',
+                  background: '#EBF5FF',
                   borderRadius: '6px',
-                  border: '1px solid #3D57FF'
+                  border: '1px solid #2E6AB3'
                 }}>
                   📋 Deployment Checklist
                 </summary>
@@ -8314,7 +8717,7 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                 minHeight: '100%'
               }}>
                 <pre style={{ margin: 0, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-                  {generateCSS()}
+                  {generatedCSS}
                 </pre>
               </div>
             </div>
