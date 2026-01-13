@@ -435,11 +435,13 @@ const CSSCustomizer = () => {
         // Extract font families from variables (just the primary font name)
         const fontBody = rootContent.match(/--font-body:\s*['"]?([^'",;]+)/);
         const fontHeading = rootContent.match(/--font-heading:\s*['"]?([^'",;]+)/);
+        const fontSubtitle = rootContent.match(/--font-subtitle:\s*['"]?([^'",;]+)/);
         const fontButton = rootContent.match(/--font-button:\s*['"]?([^'",;]+)/);
 
         const newTypography = { ...typography };
         if (fontBody) { newTypography.bodyFont = fontBody[1].trim().replace(/['"]/g, ''); importedCount++; }
         if (fontHeading) { newTypography.headingFont = fontHeading[1].trim().replace(/['"]/g, ''); importedCount++; }
+        if (fontSubtitle) { newTypography.subtitleFont = fontSubtitle[1].trim().replace(/['"]/g, ''); importedCount++; }
         if (fontButton) { newTypography.buttonFont = fontButton[1].trim().replace(/['"]/g, ''); importedCount++; }
         setTypography(prev => ({ ...prev, ...newTypography }));
       }
@@ -669,7 +671,13 @@ const CSSCustomizer = () => {
         const letterSpacing = subtitleContent.match(/letter-spacing:\s*([^;!]+)/);
         
         const updates = {};
-        if (fontFamily) updates.subtitleFont = fontFamily[1].trim();
+        // Skip CSS variables for font-family (it's now using var(--font-subtitle))
+        if (fontFamily) {
+          const fontValue = fontFamily[1].trim();
+          if (fontValue && !fontValue.startsWith('var(')) {
+            updates.subtitleFont = fontValue;
+          }
+        }
         if (fontWeight) updates.subtitleFontWeight = fontWeight[1].trim();
         if (textTransform) updates.subtitleTextTransform = textTransform[1].trim();
         if (lineHeight) updates.subtitleLineHeight = lineHeight[1].trim();
@@ -737,48 +745,55 @@ const CSSCustomizer = () => {
         const fontWeight = buttonContent.match(/font-weight:\s*([^;!]+)/);
         const letterSpacing = buttonContent.match(/letter-spacing:\s*([^;!]+)/);
         
-        // Detect button type (solid vs outlined)
+        // Detect button type (solid vs outlined) - skip CSS variables
         if (background) {
           const bgValue = background[1].trim().toLowerCase();
-          const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              primaryType: isOutlined ? 'outlined' : 'solid'
-            }
-          }));
-          importedCount++;
-        }
-        
-        // Parse text color
-        if (color) {
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              primaryColor: color[1].trim()
-            }
-          }));
-          importedCount++;
-        }
-        
-        // Parse border (shorthand)
-        if (border) {
-          const borderValue = border[1].trim();
-          const borderParts = borderValue.split(/\s+/);
-          
-          if (borderParts.length >= 3) {
+          if (bgValue && !bgValue.startsWith('var(')) {
+            const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
             setElementStyles(prev => ({
               ...prev,
-              buttons: {
-                ...prev.buttons,
-                primaryBorderWidth: borderParts[0],
-                primaryBorderStyle: borderParts[1],
-                primaryBorderColor: 'button' // Store as 'button' to reference variable
+              buttons: { 
+                ...prev.buttons, 
+                primaryType: isOutlined ? 'outlined' : 'solid'
               }
             }));
             importedCount++;
+          }
+        }
+        
+        // Parse text color (skip CSS variables)
+        if (color) {
+          const colorValue = color[1].trim();
+          if (colorValue && !colorValue.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              buttons: { 
+                ...prev.buttons, 
+                primaryColor: colorValue
+              }
+            }));
+            importedCount++;
+          }
+        }
+        
+        // Parse border (shorthand) - skip if contains CSS variables
+        if (border) {
+          const borderValue = border[1].trim();
+          if (!borderValue.includes('var(')) {
+            const borderParts = borderValue.split(/\s+/);
+            
+            if (borderParts.length >= 3) {
+              setElementStyles(prev => ({
+                ...prev,
+                buttons: {
+                  ...prev.buttons,
+                  primaryBorderWidth: borderParts[0],
+                  primaryBorderStyle: borderParts[1],
+                  primaryBorderColor: borderParts.slice(2).join(' ')
+                }
+              }));
+              importedCount++;
+            }
           }
         }
         
@@ -844,55 +859,63 @@ const CSSCustomizer = () => {
         // Detect button type (solid vs outlined)
         if (background) {
           const bgValue = background[1].trim().toLowerCase();
-          const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
-          
-          const updates = {
-            secondaryType: isOutlined ? 'outlined' : 'solid'
-          };
-          
-          // If solid, capture the background color
-          if (!isOutlined) {
-            updates.secondaryBg = background[1].trim();
-          }
-          
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              ...updates
+          // Skip if it's a CSS variable or empty
+          if (bgValue && !bgValue.startsWith('var(')) {
+            const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
+            
+            const updates = {
+              secondaryType: isOutlined ? 'outlined' : 'solid'
+            };
+            
+            // If solid, capture the background color (but not CSS variables)
+            if (!isOutlined) {
+              updates.secondaryBg = background[1].trim();
             }
-          }));
-          importedCount++;
-        }
-        
-        // Parse text color
-        if (color) {
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              secondaryColor: color[1].trim()
-            }
-          }));
-          importedCount++;
-        }
-        
-        // Parse border (shorthand)
-        if (border) {
-          const borderValue = border[1].trim();
-          const borderParts = borderValue.split(/\s+/);
-          
-          if (borderParts.length >= 3) {
+            
             setElementStyles(prev => ({
               ...prev,
-              buttons: {
-                ...prev.buttons,
-                secondaryBorderWidth: borderParts[0],
-                secondaryBorderStyle: borderParts[1],
-                secondaryBorderColor: borderParts.slice(2).join(' ')
+              buttons: { 
+                ...prev.buttons, 
+                ...updates
               }
             }));
             importedCount++;
+          }
+        }
+        
+        // Parse text color (skip CSS variables)
+        if (color) {
+          const colorValue = color[1].trim();
+          if (colorValue && !colorValue.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              buttons: { 
+                ...prev.buttons, 
+                secondaryColor: colorValue
+              }
+            }));
+            importedCount++;
+          }
+        }
+        
+        // Parse border (shorthand) - skip if contains CSS variables
+        if (border) {
+          const borderValue = border[1].trim();
+          if (!borderValue.includes('var(')) {
+            const borderParts = borderValue.split(/\s+/);
+            
+            if (borderParts.length >= 3) {
+              setElementStyles(prev => ({
+                ...prev,
+                buttons: {
+                  ...prev.buttons,
+                  secondaryBorderWidth: borderParts[0],
+                  secondaryBorderStyle: borderParts[1],
+                  secondaryBorderColor: borderParts.slice(2).join(' ')
+                }
+              }));
+              importedCount++;
+            }
           }
         }
         
@@ -929,58 +952,65 @@ const CSSCustomizer = () => {
         const color = hoverContent.match(/color:\s*([^;!]+)/);
         const border = hoverContent.match(/border:\s*([^;!]+)/);
         
-        // Detect button hover type (solid vs outlined)
+        // Detect button hover type (solid vs outlined) - skip CSS variables
         if (background) {
           const bgValue = background[1].trim().toLowerCase();
-          const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
-          
-          const updates = {
-            primaryHoverType: isOutlined ? 'outlined' : 'solid'
-          };
-          
-          // If solid, capture the background color
-          if (!isOutlined) {
-            updates.hoverBg = background[1].trim();
-          }
-          
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              ...updates
+          if (bgValue && !bgValue.startsWith('var(')) {
+            const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
+            
+            const updates = {
+              primaryHoverType: isOutlined ? 'outlined' : 'solid'
+            };
+            
+            // If solid, capture the background color
+            if (!isOutlined) {
+              updates.hoverBg = background[1].trim();
             }
-          }));
-          importedCount++;
-        }
-        
-        // Parse hover text color
-        if (color) {
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              hoverColor: color[1].trim()
-            }
-          }));
-          importedCount++;
-        }
-        
-        // Parse hover border (shorthand)
-        if (border) {
-          const borderValue = border[1].trim();
-          const borderParts = borderValue.split(/\s+/);
-          
-          if (borderParts.length >= 3) {
+            
             setElementStyles(prev => ({
               ...prev,
-              buttons: {
-                ...prev.buttons,
-                primaryHoverBorderWidth: borderParts[0],
-                primaryHoverBorderStyle: borderParts[1],
-                primaryHoverBorderColor: 'button' // Store as 'button' to reference variable
+              buttons: { 
+                ...prev.buttons, 
+                ...updates
               }
             }));
             importedCount++;
+          }
+        }
+        
+        // Parse hover text color (skip CSS variables)
+        if (color) {
+          const colorValue = color[1].trim();
+          if (colorValue && !colorValue.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              buttons: { 
+                ...prev.buttons, 
+                hoverColor: colorValue
+              }
+            }));
+            importedCount++;
+          }
+        }
+        
+        // Parse hover border (shorthand) - skip if contains CSS variables
+        if (border) {
+          const borderValue = border[1].trim();
+          if (!borderValue.includes('var(')) {
+            const borderParts = borderValue.split(/\s+/);
+            
+            if (borderParts.length >= 3) {
+              setElementStyles(prev => ({
+                ...prev,
+                buttons: {
+                  ...prev.buttons,
+                  primaryHoverBorderWidth: borderParts[0],
+                  primaryHoverBorderStyle: borderParts[1],
+                  primaryHoverBorderColor: borderParts.slice(2).join(' ')
+                }
+              }));
+              importedCount++;
+            }
           }
         }
       }
@@ -993,58 +1023,65 @@ const CSSCustomizer = () => {
         const color = hoverContent.match(/color:\s*([^;!]+)/);
         const border = hoverContent.match(/border:\s*([^;!]+)/);
         
-        // Detect button hover type (solid vs outlined)
+        // Detect button hover type (solid vs outlined) - skip CSS variables
         if (background) {
           const bgValue = background[1].trim().toLowerCase();
-          const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
-          
-          const updates = {
-            secondaryHoverType: isOutlined ? 'outlined' : 'solid'
-          };
-          
-          // If solid, capture the background color
-          if (!isOutlined) {
-            updates.secondaryHoverBg = background[1].trim();
-          }
-          
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              ...updates
+          if (bgValue && !bgValue.startsWith('var(')) {
+            const isOutlined = bgValue === 'transparent' || bgValue.includes('rgba(0, 0, 0, 0)') || bgValue.includes('rgba(0,0,0,0)');
+            
+            const updates = {
+              secondaryHoverType: isOutlined ? 'outlined' : 'solid'
+            };
+            
+            // If solid, capture the background color
+            if (!isOutlined) {
+              updates.secondaryHoverBg = background[1].trim();
             }
-          }));
-          importedCount++;
-        }
-        
-        // Parse hover text color
-        if (color) {
-          setElementStyles(prev => ({
-            ...prev,
-            buttons: { 
-              ...prev.buttons, 
-              secondaryHoverColor: color[1].trim()
-            }
-          }));
-          importedCount++;
-        }
-        
-        // Parse hover border (shorthand)
-        if (border) {
-          const borderValue = border[1].trim();
-          const borderParts = borderValue.split(/\s+/);
-          
-          if (borderParts.length >= 3) {
+            
             setElementStyles(prev => ({
               ...prev,
-              buttons: {
-                ...prev.buttons,
-                secondaryHoverBorderWidth: borderParts[0],
-                secondaryHoverBorderStyle: borderParts[1],
-                secondaryHoverBorderColor: 'button' // Store as 'button' to reference variable
+              buttons: { 
+                ...prev.buttons, 
+                ...updates
               }
             }));
             importedCount++;
+          }
+        }
+        
+        // Parse hover text color (skip CSS variables)
+        if (color) {
+          const colorValue = color[1].trim();
+          if (colorValue && !colorValue.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              buttons: { 
+                ...prev.buttons, 
+                secondaryHoverColor: colorValue
+              }
+            }));
+            importedCount++;
+          }
+        }
+        
+        // Parse hover border (shorthand) - skip if contains CSS variables
+        if (border) {
+          const borderValue = border[1].trim();
+          if (!borderValue.includes('var(')) {
+            const borderParts = borderValue.split(/\s+/);
+            
+            if (borderParts.length >= 3) {
+              setElementStyles(prev => ({
+                ...prev,
+                buttons: {
+                  ...prev.buttons,
+                  secondaryHoverBorderWidth: borderParts[0],
+                  secondaryHoverBorderStyle: borderParts[1],
+                  secondaryHoverBorderColor: borderParts.slice(2).join(' ')
+                }
+              }));
+              importedCount++;
+            }
           }
         }
       }
@@ -1063,20 +1100,23 @@ const CSSCustomizer = () => {
         
         if (border) {
           const borderValue = border[1].trim();
-          // Parse border shorthand: "1px solid #000"
-          const borderParts = borderValue.split(/\s+/);
-          
-          if (borderParts.length >= 3) {
-            setElementStyles(prev => ({
-              ...prev,
-              experienceCard: {
-                ...prev.experienceCard,
-                borderWidth: borderParts[0],
-                borderStyle: borderParts[1],
-                borderColor: borderParts.slice(2).join(' ')
-              }
-            }));
-            importedCount++;
+          // Skip if contains CSS variables
+          if (!borderValue.includes('var(')) {
+            // Parse border shorthand: "1px solid #000"
+            const borderParts = borderValue.split(/\s+/);
+            
+            if (borderParts.length >= 3) {
+              setElementStyles(prev => ({
+                ...prev,
+                experienceCard: {
+                  ...prev.experienceCard,
+                  borderWidth: borderParts[0],
+                  borderStyle: borderParts[1],
+                  borderColor: borderParts.slice(2).join(' ')
+                }
+              }));
+              importedCount++;
+            }
           }
         }
       }
@@ -1088,14 +1128,18 @@ const CSSCustomizer = () => {
         const backgroundColor = glanceContent.match(/background(?:-color)?:\s*([^;!]+)/);
         
         if (backgroundColor) {
-          setElementStyles(prev => ({
-            ...prev,
-            atAGlance: {
-              ...prev.atAGlance,
-              zebraStripingColor: backgroundColor[1].trim()
-            }
-          }));
-          importedCount++;
+          const bgValue = backgroundColor[1].trim();
+          // Skip CSS variables
+          if (bgValue && !bgValue.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              atAGlance: {
+                ...prev.atAGlance,
+                zebraStripingColor: bgValue
+              }
+            }));
+            importedCount++;
+          }
         }
       }
 
@@ -1103,20 +1147,23 @@ const CSSCustomizer = () => {
       const dividerMatch = normalizedCSS.match(/\.CheckoutQuestion[^{]*\{[^}]*border-bottom:\s*([^;!]+)/);
       if (dividerMatch) {
         const borderValue = dividerMatch[1].trim();
-        // Parse border shorthand: "1px solid #e6e6e6"
-        const borderParts = borderValue.split(/\s+/);
-        
-        if (borderParts.length >= 3) {
-          setElementStyles(prev => ({
-            ...prev,
-            dividers: {
-              ...prev.dividers,
-              thickness: borderParts[0],
-              style: borderParts[1],
-              color: borderParts.slice(2).join(' ')
-            }
-          }));
-          importedCount++;
+        // Skip if contains CSS variables
+        if (!borderValue.includes('var(')) {
+          // Parse border shorthand: "1px solid #e6e6e6"
+          const borderParts = borderValue.split(/\s+/);
+          
+          if (borderParts.length >= 3) {
+            setElementStyles(prev => ({
+              ...prev,
+              dividers: {
+                ...prev.dividers,
+                thickness: borderParts[0],
+                style: borderParts[1],
+                color: borderParts.slice(2).join(' ')
+              }
+            }));
+            importedCount++;
+          }
         }
       }
       
@@ -1125,15 +1172,17 @@ const CSSCustomizer = () => {
         const separatorMatch = normalizedCSS.match(/\.Confirmation-Body\s+\.separator\s*\{[^}]*background:\s*([^;!]+)/);
         if (separatorMatch) {
           const backgroundColor = separatorMatch[1].trim();
-          
-          setElementStyles(prev => ({
-            ...prev,
-            dividers: {
-              ...prev.dividers,
-              color: backgroundColor
-            }
-          }));
-          importedCount++;
+          // Skip CSS variables
+          if (backgroundColor && !backgroundColor.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              dividers: {
+                ...prev.dividers,
+                color: backgroundColor
+              }
+            }));
+            importedCount++;
+          }
         }
       }
 
@@ -1141,23 +1190,8 @@ const CSSCustomizer = () => {
       const checkoutSummaryMatch = normalizedCSS.match(/\.CheckoutSummary-Container[^{]*\{[^}]*background:\s*([^;!]+)/);
       if (checkoutSummaryMatch) {
         const backgroundColor = checkoutSummaryMatch[1].trim();
-        
-        setElementStyles(prev => ({
-          ...prev,
-          checkoutSummary: {
-            ...prev.checkoutSummary,
-            backgroundColor: backgroundColor
-          }
-        }));
-        importedCount++;
-      }
-      
-      // Also check for ConfirmationDefault selector
-      if (!checkoutSummaryMatch) {
-        const confirmationDefaultMatch = normalizedCSS.match(/\.ConfirmationDefault[^{]*\.ConfirmationDefault-Column\.right[^{]*\{[^}]*background:\s*([^;!]+)/);
-        if (confirmationDefaultMatch) {
-          const backgroundColor = confirmationDefaultMatch[1].trim();
-          
+        // Skip CSS variables
+        if (backgroundColor && !backgroundColor.startsWith('var(')) {
           setElementStyles(prev => ({
             ...prev,
             checkoutSummary: {
@@ -1168,20 +1202,41 @@ const CSSCustomizer = () => {
           importedCount++;
         }
       }
+      
+      // Also check for ConfirmationDefault selector
+      if (!checkoutSummaryMatch) {
+        const confirmationDefaultMatch = normalizedCSS.match(/\.ConfirmationDefault[^{]*\.ConfirmationDefault-Column\.right[^{]*\{[^}]*background:\s*([^;!]+)/);
+        if (confirmationDefaultMatch) {
+          const backgroundColor = confirmationDefaultMatch[1].trim();
+          // Skip CSS variables
+          if (backgroundColor && !backgroundColor.startsWith('var(')) {
+            setElementStyles(prev => ({
+              ...prev,
+              checkoutSummary: {
+                ...prev.checkoutSummary,
+                backgroundColor: backgroundColor
+              }
+            }));
+            importedCount++;
+          }
+        }
+      }
 
       // Parse Checkout Summary Divider
       const checkoutSummaryDividerMatch = normalizedCSS.match(/\.CheckoutSummary-ContentBox[^{]*\{[^}]*border-bottom:\s*[^;]*solid\s+([^;!]+)/);
       if (checkoutSummaryDividerMatch) {
         const dividerColor = checkoutSummaryDividerMatch[1].trim();
-        
-        setElementStyles(prev => ({
-          ...prev,
-          checkoutSummary: {
-            ...prev.checkoutSummary,
-            dividerColor: dividerColor
-          }
-        }));
-        importedCount++;
+        // Skip CSS variables
+        if (dividerColor && !dividerColor.startsWith('var(')) {
+          setElementStyles(prev => ({
+            ...prev,
+            checkoutSummary: {
+              ...prev.checkoutSummary,
+              dividerColor: dividerColor
+            }
+          }));
+          importedCount++;
+        }
       }
 
       // Parse input fields
@@ -1194,16 +1249,29 @@ const CSSCustomizer = () => {
         const borderRadius = inputContent.match(/border-radius:\s*([^;!]+)/);
         
         const inputUpdates = {};
-        if (backgroundColor) inputUpdates.backgroundColor = backgroundColor[1].trim();
-        if (textColor) inputUpdates.textColor = textColor[1].trim();
+        // Skip CSS variables for colors
+        if (backgroundColor) {
+          const bgValue = backgroundColor[1].trim();
+          if (bgValue && !bgValue.startsWith('var(')) {
+            inputUpdates.backgroundColor = bgValue;
+          }
+        }
+        if (textColor) {
+          const colorValue = textColor[1].trim();
+          if (colorValue && !colorValue.startsWith('var(')) {
+            inputUpdates.textColor = colorValue;
+          }
+        }
         if (borderRadius) inputUpdates.borderRadius = borderRadius[1].trim();
         
-        // Parse border for color
+        // Parse border for color - skip if contains CSS variables
         if (borderMatch) {
           const borderValue = borderMatch[1].trim();
-          const borderParts = borderValue.split(/\s+/);
-          if (borderParts.length >= 3) {
-            inputUpdates.borderColor = borderParts.slice(2).join(' ');
+          if (!borderValue.includes('var(')) {
+            const borderParts = borderValue.split(/\s+/);
+            if (borderParts.length >= 3) {
+              inputUpdates.borderColor = borderParts.slice(2).join(' ');
+            }
           }
         }
         
@@ -1226,16 +1294,29 @@ const CSSCustomizer = () => {
         const padding = modalContent.match(/padding:\s*([^;!]+)/);
         
         const modalUpdates = {};
-        if (backgroundColor) modalUpdates.backgroundColor = backgroundColor[1].trim();
-        if (textColor) modalUpdates.textColor = textColor[1].trim();
+        // Skip CSS variables for colors
+        if (backgroundColor) {
+          const bgValue = backgroundColor[1].trim();
+          if (bgValue && !bgValue.startsWith('var(')) {
+            modalUpdates.backgroundColor = bgValue;
+          }
+        }
+        if (textColor) {
+          const colorValue = textColor[1].trim();
+          if (colorValue && !colorValue.startsWith('var(')) {
+            modalUpdates.textColor = colorValue;
+          }
+        }
         if (padding) modalUpdates.padding = padding[1].trim();
         
-        // Parse border for color
+        // Parse border for color - skip if contains CSS variables
         if (borderMatch) {
           const borderValue = borderMatch[1].trim();
-          const borderParts = borderValue.split(/\s+/);
-          if (borderParts.length >= 3) {
-            modalUpdates.borderColor = borderParts.slice(2).join(' ');
+          if (!borderValue.includes('var(')) {
+            const borderParts = borderValue.split(/\s+/);
+            if (borderParts.length >= 3) {
+              modalUpdates.borderColor = borderParts.slice(2).join(' ');
+            }
           }
         }
         
@@ -1268,7 +1349,13 @@ const CSSCustomizer = () => {
         const listStyle = listContent.match(/list-style:\s*([^;!]+)/);
         
         const listUpdates = {};
-        if (backgroundColor) listUpdates.backgroundColor = backgroundColor[1].trim();
+        // Skip CSS variables for backgroundColor
+        if (backgroundColor) {
+          const bgValue = backgroundColor[1].trim();
+          if (bgValue && !bgValue.startsWith('var(')) {
+            listUpdates.backgroundColor = bgValue;
+          }
+        }
         if (padding) listUpdates.padding = padding[1].trim();
         if (margin) listUpdates.margin = margin[1].trim();
         if (listStyle) listUpdates.listStyle = listStyle[1].trim();
@@ -1659,7 +1746,8 @@ const CSSCustomizer = () => {
   --color-brand: ${colors.brand};` : ''}${colors.background ? `
   --color-background: ${colors.background};` : ''}${typography.bodyFont ? `
   --font-body: ${buildFontStack(typography.bodyFont, getFontFallback(typography.bodyFont))};` : ''}${typography.headingFont ? `
-  --font-heading: ${buildFontStack(typography.headingFont, getFontFallback(typography.headingFont))};` : ''}${typography.buttonFont ? `
+  --font-heading: ${buildFontStack(typography.headingFont, getFontFallback(typography.headingFont))};` : ''}${typography.subtitleFont ? `
+  --font-subtitle: ${buildFontStack(typography.subtitleFont, getFontFallback(typography.subtitleFont))};` : ''}${typography.buttonFont ? `
   --font-button: ${buildFontStack(typography.buttonFont, getFontFallback(typography.buttonFont))};` : ''}
 }
 
@@ -1831,7 +1919,7 @@ const CSSCustomizer = () => {
     if (typography.subtitleFont || typography.subtitleFontWeight || typography.subtitleTextTransform || typography.subtitleLineHeight || typography.subtitleLetterSpacing) {
       css += `/* Subtitle Font Settings */
 .tour-tagline, .TourPage-About-tagline {${typography.subtitleFont ? `
-  font-family: ${buildFontStack(typography.subtitleFont, getFontFallback(typography.subtitleFont))} !important;` : ''}${typography.subtitleFontWeight ? `
+  font-family: var(--font-subtitle) !important;` : ''}${typography.subtitleFontWeight ? `
   font-weight: ${typography.subtitleFontWeight} !important;` : ''}${typography.subtitleTextTransform ? `
   text-transform: ${typography.subtitleTextTransform} !important;` : ''}${typography.subtitleLineHeight ? `
   line-height: ${typography.subtitleLineHeight} !important;` : ''}${typography.subtitleLetterSpacing ? `
@@ -1910,7 +1998,7 @@ const CSSCustomizer = () => {
   background: transparent !important;` : '') : `${elementStyles.buttons.primaryColor ? `
   color: ${elementStyles.buttons.primaryColor} !important;` : ''}${colors.button ? `
   background: var(--color-button) !important;` : ''}`}${elementStyles.buttons.primaryBorderRadius ? `
-  border-radius: ${elementStyles.buttons.primaryBorderRadius} !important;` : ''}${(elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor) && elementStyles.buttons.primaryTransition && elementStyles.buttons.primaryTransition !== 'none' ? `
+  border-radius: ${elementStyles.buttons.primaryBorderRadius} !important;` : ''}${elementStyles.buttons.primaryTransition && elementStyles.buttons.primaryTransition !== 'none' ? `
   transition: ${elementStyles.buttons.primaryTransition} !important;` : ''}${typography.textTransform && typography.textTransform !== 'none' ? `
   text-transform: ${typography.textTransform} !important;` : ''}${typography.buttonLineHeight ? `
   line-height: ${typography.buttonLineHeight} !important;` : ''}${typography.buttonFontSize ? `
@@ -1956,7 +2044,7 @@ ${elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor || (elementS
   background: ${elementStyles.buttons.secondaryBg || 'var(--color-button)'} !important;` : '') : `${(elementStyles.buttons.secondaryColor || colors.button) ? `
   color: ${elementStyles.buttons.secondaryColor || 'var(--color-button)'} !important;` : ''}${colors.background ? `
   background: ${elementStyles.buttons.secondaryBg} !important;` : ''}`}${elementStyles.buttons.secondaryBorderRadius ? `
-  border-radius: ${elementStyles.buttons.secondaryBorderRadius} !important;` : ''}${(elementStyles.buttons.secondaryHoverBg || elementStyles.buttons.secondaryHoverColor) && elementStyles.buttons.secondaryTransition && elementStyles.buttons.secondaryTransition !== 'none' ? `
+  border-radius: ${elementStyles.buttons.secondaryBorderRadius} !important;` : ''}${elementStyles.buttons.secondaryTransition && elementStyles.buttons.secondaryTransition !== 'none' ? `
   transition: ${elementStyles.buttons.secondaryTransition} !important;` : ''}${typography.textTransform && typography.textTransform !== 'none' ? `
   text-transform: ${typography.textTransform} !important;` : ''}${typography.buttonLineHeight ? `
   line-height: ${typography.buttonLineHeight} !important;` : ''}${typography.buttonFontSize ? `
