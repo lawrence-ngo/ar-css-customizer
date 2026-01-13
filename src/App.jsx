@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Download, Plus, Trash2, ChevronDown, ChevronUp, Copy, Check } from 'lucide-react';
+import { Download, Plus, Trash2, ChevronDown, ChevronUp, Copy, Check, X } from 'lucide-react';
 
 // Fallback font options - defined outside component to avoid recreation on each render
 const FALLBACK_FONT_OPTIONS = [
@@ -359,21 +359,32 @@ const CSSCustomizer = () => {
       } else if (font.type === 'custom' && font.files && font.files.length > 0) {
         // Generate @font-face for each custom font file
         font.files.forEach(file => {
-          // Detect format from URL
-          let format = 'woff2';
-          if (file.url.includes('.woff2')) format = 'woff2';
-          else if (file.url.includes('.woff')) format = 'woff';
-          else if (file.url.includes('.ttf')) format = 'truetype';
-          else if (file.url.includes('.otf')) format = 'opentype';
-          
-          fontCSS += `@font-face {
+          if (file.url) {
+            // Helper to detect format from URL
+            const getFormat = (url) => {
+              if (url.includes('.woff2')) return 'woff2';
+              if (url.includes('.woff')) return 'woff';
+              if (url.includes('.ttf')) return 'truetype';
+              if (url.includes('.otf')) return 'opentype';
+              return 'woff2';
+            };
+            
+            // Build src declaration with multiple URLs if available
+            const srcParts = [];
+            srcParts.push(`url('${file.url}') format('${getFormat(file.url)}')`);
+            if (file.urlWoff && file.urlWoff.trim()) {
+              srcParts.push(`url('${file.urlWoff.trim()}') format('${getFormat(file.urlWoff)}')`);
+            }
+            
+            fontCSS += `@font-face {
   font-family: "${font.name}";
-  src: url('${file.url}') format('${format}');
+  src: ${srcParts.join(', ')};
   font-weight: ${file.weight || 'normal'};
   font-style: ${file.style || 'normal'};
   font-display: swap;
 }
 `;
+          }
         });
       }
     });
@@ -505,40 +516,79 @@ const CSSCustomizer = () => {
       for (const match of fontFaceMatches) {
         const fontFaceContent = match[1];
         const fontFamily = fontFaceContent.match(/font-family:\s*['"]?([^'";\n]+)['"]?/);
-        const srcUrl = fontFaceContent.match(/src:\s*url\(['"]?([^'")\s]+)['"]?\)/);
         const fontWeight = fontFaceContent.match(/font-weight:\s*([^;\n]+)/);
         const fontStyle = fontFaceContent.match(/font-style:\s*([^;\n]+)/);
-
-        if (fontFamily && srcUrl) {
-          const familyName = fontFamily[1].trim();
-          // Check if we already have this font
-          const existingFont = newFonts.find(f => f.type === 'custom' && f.name === familyName);
+        
+        // Extract all URLs from src declaration (handles multiple URLs separated by commas)
+        const srcMatch = fontFaceContent.match(/src:\s*([^;]+)/);
+        if (fontFamily && srcMatch) {
+          const srcContent = srcMatch[1];
+          const urlMatches = [...srcContent.matchAll(/url\(\s*['"]?([^'")]+)['"]?\s*\)/g)];
           
-          if (existingFont) {
-            // Add file to existing font
-            existingFont.files.push({
-              url: srcUrl[1].trim(),
-              weight: fontWeight ? fontWeight[1].trim() : 'normal',
-              style: fontStyle ? fontStyle[1].trim() : 'normal'
-            });
-          } else {
-            // Create new font entry
-            newFonts.push({
-              id: Date.now() + Math.random(),
-              name: familyName,
-              type: 'custom',
-              googleLink: '',
-              googleFamilies: [],
-              typekitUrl: '',
-              typekitFamilies: [],
-              fallback: 'Arial',
-              files: [{
-                url: srcUrl[1].trim(),
-                weight: fontWeight ? fontWeight[1].trim() : 'normal',
-                style: fontStyle ? fontStyle[1].trim() : 'normal'
-              }]
-            });
-            importedCount++;
+          if (urlMatches.length > 0) {
+            const familyName = fontFamily[1].trim();
+            
+            // Separate URLs by format - first woff2/primary, then woff/fallback
+            let primaryUrl = '';
+            let fallbackUrl = '';
+            
+            for (const urlMatch of urlMatches) {
+              const url = urlMatch[1].trim();
+              
+              // Skip Google Fonts URLs
+              if (url.includes('fonts.googleapis.com') || url.includes('fonts.gstatic.com')) {
+                continue;
+              }
+              
+              // Categorize by format
+              if (url.includes('.woff2') || url.includes('.otf') || url.includes('.ttf')) {
+                if (!primaryUrl) primaryUrl = url;
+              } else if (url.includes('.woff')) {
+                if (!fallbackUrl) fallbackUrl = url;
+              } else if (!primaryUrl) {
+                primaryUrl = url; // Default to primary if format unknown
+              }
+            }
+            
+            if (primaryUrl) {
+              // Check if we already have this font
+              const existingFont = newFonts.find(f => f.type === 'custom' && f.name === familyName);
+              
+              if (existingFont) {
+                // Check for existing file with same weight/style
+                const weight = fontWeight ? fontWeight[1].trim() : 'normal';
+                const style = fontStyle ? fontStyle[1].trim() : 'normal';
+                const existingFile = existingFont.files.find(f => f.weight === weight && f.style === style);
+                
+                if (!existingFile) {
+                  existingFont.files.push({
+                    url: primaryUrl,
+                    urlWoff: fallbackUrl,
+                    weight: weight,
+                    style: style
+                  });
+                }
+              } else {
+                // Create new font entry
+                newFonts.push({
+                  id: Date.now() + Math.random(),
+                  name: familyName,
+                  type: 'custom',
+                  googleLink: '',
+                  googleFamilies: [],
+                  typekitUrl: '',
+                  typekitFamilies: [],
+                  fallback: 'Arial',
+                  files: [{
+                    url: primaryUrl,
+                    urlWoff: fallbackUrl,
+                    weight: fontWeight ? fontWeight[1].trim() : 'normal',
+                    style: fontStyle ? fontStyle[1].trim() : 'normal'
+                  }]
+                });
+                importedCount++;
+              }
+            }
           }
         }
       }
@@ -1394,14 +1444,18 @@ const CSSCustomizer = () => {
         importedCount++;
       }
 
-      if (normalizedCSS.includes('.TourPage-ContactGuide') &&
-          normalizedCSS.includes('display: none')) {
+      // Parse Hide Contact Button - look for the specific rule pattern
+      // Must match ".TourPage-ContactGuide" with "display: none" in the same rule block
+      const hideContactMatch = normalizedCSS.match(/\.TourPage-ContactGuide\s*\{[^}]*display:\s*none[^}]*\}/);
+      if (hideContactMatch) {
         setAdvancedCSS(prev => ({ ...prev, hideContactButton: true }));
         importedCount++;
       }
 
-      if (normalizedCSS.includes('.Plugins-TourPage-GlanceWrapper') &&
-          normalizedCSS.includes('display: none')) {
+      // Parse Hide At A Glance - look for the specific rule pattern
+      // Must match ".Plugins-TourPage-GlanceWrapper" with "display: none" in the same rule block
+      const hideAtAGlanceMatch = normalizedCSS.match(/\.Plugins-TourPage-GlanceWrapper\s*\{[^}]*display:\s*none[^}]*\}/);
+      if (hideAtAGlanceMatch) {
         setAdvancedCSS(prev => ({ ...prev, hideAtAGlance: true }));
         importedCount++;
       }
@@ -1651,7 +1705,7 @@ const CSSCustomizer = () => {
   const addFontFile = (fontId) => {
     setFonts(fonts.map(font => 
       font.id === fontId 
-        ? { ...font, files: [...font.files, { url: '', weight: 'normal', style: 'normal' }] }
+        ? { ...font, files: [...font.files, { url: '', urlWoff: '', weight: 'normal', style: 'normal' }] }
         : font
     ));
   };
@@ -1741,9 +1795,29 @@ const CSSCustomizer = () => {
         if (font.type === 'custom' && font.files.length > 0) {
           font.files.forEach(file => {
             if (file.url) {
+              // Build src declaration with multiple URLs if available
+              const srcParts = [];
+              
+              // Helper to detect format from URL
+              const getFormat = (url) => {
+                if (url.includes('.woff2')) return 'woff2';
+                if (url.includes('.woff')) return 'woff';
+                if (url.includes('.ttf')) return 'truetype';
+                if (url.includes('.otf')) return 'opentype';
+                return 'woff2'; // default
+              };
+              
+              // Add primary URL
+              srcParts.push(`url('${file.url}') format('${getFormat(file.url)}')`);
+              
+              // Add fallback URL if provided (and not just whitespace)
+              if (file.urlWoff && file.urlWoff.trim()) {
+                srcParts.push(`url('${file.urlWoff.trim()}') format('${getFormat(file.urlWoff)}')`);
+              }
+              
               css += `@font-face {
   font-family: '${font.name}';
-  src: url('${file.url}') format('opentype');
+  src: ${srcParts.join(',\n       ')};
   font-weight: ${file.weight};
   font-style: ${file.style};
   font-display: swap;
@@ -1854,7 +1928,12 @@ const CSSCustomizer = () => {
   color: ${elementStyles.inputs.textColor || '#000000'} !important;
 }
 
-.CheckoutSection .row label {
+`;
+    }
+
+    // Checkout label color - apply when body color is set
+    if (colors.body) {
+      css += `.CheckoutSection .row label {
   color: var(--color-body) !important;
 }
 
@@ -2234,12 +2313,18 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
     }
 
     // Experience List Card
-    // Only generate if there are border properties to declare
-    if (elementStyles.experienceCard.borderWidth || elementStyles.experienceCard.borderColor || (elementStyles.experienceCard.borderStyle && elementStyles.experienceCard.borderStyle !== 'solid')) {
-      const hasBorder = elementStyles.experienceCard.borderWidth || elementStyles.experienceCard.borderColor;
+    // Only generate if there are actual customizations:
+    // - border width is set, OR
+    // - border color is set, OR
+    // - border style is changed from default 'solid'
+    const hasExperienceCardCustomization = elementStyles.experienceCard.borderWidth || 
+                                            elementStyles.experienceCard.borderColor || 
+                                            (elementStyles.experienceCard.borderStyle && elementStyles.experienceCard.borderStyle !== 'solid');
+    
+    if (hasExperienceCardCustomization) {
       css += `/* Experience List Card */
-.tour-wrapper a {${hasBorder ? `
-  border: ${elementStyles.experienceCard.borderWidth || '1px'} ${elementStyles.experienceCard.borderStyle || 'solid'} ${elementStyles.experienceCard.borderColor || 'var(--color-button)'} !important;` : ''}
+.tour-wrapper a {
+  border: ${elementStyles.experienceCard.borderWidth || '1px'} ${elementStyles.experienceCard.borderStyle || 'solid'} ${elementStyles.experienceCard.borderColor || '#cecece'} !important;
 }
 
 `;
@@ -3554,13 +3639,13 @@ span.ticket-select-label:before {
 
                           <div style={{ marginBottom: '12px' }}>
                             <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#666' }}>
-                              Font File URL
+                              Primary Font URL <span style={{ color: '#999', fontWeight: 'normal' }}>(woff2 preferred)</span>
                             </label>
                             <input
                               type="text"
                               value={file.url}
                               onChange={(e) => updateFontFile(font.id, fileIndex, 'url', e.target.value)}
-                              placeholder="https://example.com/font.otf"
+                              placeholder="https://example.com/font.woff2"
                               style={{
                         width: '100%',
                         minWidth: 0,
@@ -3571,7 +3656,67 @@ span.ticket-select-label:before {
                                 fontSize: '13px'
                               }}
                             />
+                            <div style={{ fontSize: '11px', color: '#888', marginTop: '4px' }}>
+                              Supported formats: .woff2, .woff, .ttf, .otf
+                            </div>
                           </div>
+
+                          {file.urlWoff ? (
+                            <div style={{ marginBottom: '12px' }}>
+                              <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px', color: '#666' }}>
+                                Fallback Font URL <span style={{ color: '#999', fontWeight: 'normal' }}>(woff for older browsers)</span>
+                              </label>
+                              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <input
+                                  type="text"
+                                  value={file.urlWoff || ''}
+                                  onChange={(e) => updateFontFile(font.id, fileIndex, 'urlWoff', e.target.value)}
+                                  placeholder="https://example.com/font.woff"
+                                  style={{
+                                    flex: 1,
+                                    minWidth: 0,
+                                    boxSizing: 'border-box',
+                                    padding: '8px',
+                                    border: '1px solid #ddd',
+                                    borderRadius: '4px',
+                                    fontSize: '13px'
+                                  }}
+                                />
+                                <button
+                                  onClick={() => updateFontFile(font.id, fileIndex, 'urlWoff', '')}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: '#999',
+                                    cursor: 'pointer',
+                                    padding: '4px',
+                                    fontSize: '12px'
+                                  }}
+                                  title="Remove fallback URL"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => updateFontFile(font.id, fileIndex, 'urlWoff', ' ')}
+                              style={{
+                                background: 'transparent',
+                                border: 'none',
+                                color: '#888',
+                                cursor: 'pointer',
+                                padding: '0',
+                                marginBottom: '12px',
+                                fontSize: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              <Plus size={12} /> Add Fallback Font URL <span style={{ color: '#aaa', fontWeight: 'normal' }}>(optional - woff for older browsers)</span>
+                            </button>
+                          )}
 
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                             <div>
@@ -7646,7 +7791,7 @@ span.ticket-select-label:before {
                       <input
                         type="color"
                         value={(() => {
-                          const val = elementStyles.experienceCard.borderColor || colors.button || '#000000';
+                          const val = elementStyles.experienceCard.borderColor || '#cecece';
                           return isTransparent(val) ? '#000000' : val;
                         })()}
                         onChange={(e) => setElementStyles({
@@ -7659,7 +7804,7 @@ span.ticket-select-label:before {
                           border: '2px solid #ddd',
                           borderRadius: '6px',
                           cursor: 'pointer',
-                          opacity: (elementStyles.experienceCard.borderColor || colors.button) && !isTransparent(elementStyles.experienceCard.borderColor) ? 1 : 0,
+                          opacity: !isTransparent(elementStyles.experienceCard.borderColor) ? 1 : 0,
                           position: 'absolute',
                           top: 0,
                           left: 0
@@ -7675,24 +7820,6 @@ span.ticket-select-label:before {
                           pointerEvents: 'none'
                         }} />
                       )}
-                      {!(elementStyles.experienceCard.borderColor || colors.button) && (
-                        <div style={{
-                          width: '100%',
-                          height: '100%',
-                          border: '2px dashed #ccc',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '10px',
-                          color: '#999',
-                          fontWeight: '500',
-                          background: 'transparent',
-                          pointerEvents: 'none'
-                        }}>
-                          select
-                        </div>
-                      )}
                     </div>
                     <div style={{ flex: 1 }}>
                       <input
@@ -7702,7 +7829,7 @@ span.ticket-select-label:before {
                           ...elementStyles,
                           experienceCard: { ...elementStyles.experienceCard, borderColor: e.target.value }
                         })}
-                        placeholder={colors.button || 'var(--color-button)'}
+                        placeholder="#cecece"
                         style={{
                           width: '100%',
                           minWidth: 0,
@@ -7720,7 +7847,7 @@ span.ticket-select-label:before {
                         color: '#999',
                         marginTop: '4px'
                       }}>
-                        {elementStyles.experienceCard.borderColor ? 'Custom override' : `Default: ${colors.button || 'button color'}`}
+                        {elementStyles.experienceCard.borderColor ? 'Custom override' : 'Default: #cecece'}
                       </div>
                     </div>
                   </div>
