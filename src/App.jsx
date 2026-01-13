@@ -1850,6 +1850,14 @@ const CSSCustomizer = () => {
   }
 }
 
+[data-testid="phone-input-button"] {
+  color: ${elementStyles.inputs.textColor || '#000000'} !important;
+}
+
+.CheckoutSection .row label {
+  color: var(--color-body) !important;
+}
+
 `;
     }
 
@@ -2075,8 +2083,8 @@ ${elementStyles.buttons.hoverBg || elementStyles.buttons.hoverColor || (elementS
   font-weight: ${typography.buttonFontWeight} !important;` : ''}${elementStyles.buttons.secondaryType === 'solid' ? (colors.button ? `
   color: ${elementStyles.buttons.secondaryColor || '#ffffff'} !important;
   background: ${elementStyles.buttons.secondaryBg || 'var(--color-button)'} !important;` : '') : `${(elementStyles.buttons.secondaryColor || colors.button) ? `
-  color: ${elementStyles.buttons.secondaryColor || 'var(--color-button)'} !important;` : ''}${colors.background ? `
-  background: ${elementStyles.buttons.secondaryBg} !important;` : ''}`}${elementStyles.buttons.secondaryBorderRadius ? `
+  color: ${elementStyles.buttons.secondaryColor || 'var(--color-button)'} !important;` : ''}
+  background: transparent !important;`}${elementStyles.buttons.secondaryBorderRadius ? `
   border-radius: ${elementStyles.buttons.secondaryBorderRadius} !important;` : ''}${elementStyles.buttons.secondaryTransition && elementStyles.buttons.secondaryTransition !== 'none' ? `
   transition: ${elementStyles.buttons.secondaryTransition} !important;` : ''}${typography.textTransform && typography.textTransform !== 'none' ? `
   text-transform: ${typography.textTransform} !important;` : ''}${typography.buttonLineHeight ? `
