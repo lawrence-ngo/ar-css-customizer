@@ -325,7 +325,10 @@ const CSSCustomizer = () => {
     discountCodeButtonFontSize: '',
     discountCodeButtonPaddingTop: '',
     hideContactButton: false,
-    hideAtAGlance: false
+    hideAtAGlance: false,
+    bsideFullViewNote: false,
+    bsideSoldOutMessage: false,
+    hideAnyRoadLogo: false
   });
 
   // Custom CSS snippets
@@ -2284,6 +2287,58 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
       css += `/* Advanced CSS - Hide At A Glance Section */
 .Plugins-TourPage-GlanceWrapper {
   display: none !important;
+}
+
+`;
+    }
+
+    if (advancedCSS.bsideFullViewNote) {
+      css += `/* Advanced CSS - BSide FullView Note */
+#payment-main > div > div > div > div.ColumnContainer > div.ComponentContainer.LeftColumn > div.CheckoutSection.CheckoutGuestInformation > div:nth-child(2):before {
+  visibility: visible !important;
+  display: block;
+  content: "Please add guest names to their tickets. (If you're unsure who is coming with you, leave the form blank. You can add their information later!)" !important;
+  padding-bottom: 16px;
+}
+span.ticket-select-label:before {
+  visibility: visible !important;
+  display: block;
+  content: "Please add guest names to their tickets. (If you're unsure who is coming with you, leave the form blank. You can add their information later!)" !important;
+  padding-bottom: 16px;
+}
+
+`;
+    }
+
+    if (advancedCSS.bsideSoldOutMessage) {
+      css += `/* Advanced CSS - BSide Sold Out Message */
+.TourPage-BookingDetails .TourPage-BookingDetails-NoAvailability .text {
+  visibility: hidden;
+}
+.TourPage-BookingDetails .TourPage-BookingDetails-NoAvailability .text::before {
+  visibility: visible;
+  content: 'This show is currently SOLD OUT\\A';
+  white-space: pre-line;
+}
+
+@media (max-width: 600px) {
+  #payment-main > div > div > div.transitionable > div > article > div.BookingRequest-form.ui.form > div.TourPage-BookingDetails-NoAvailability > div.text {
+    visibility: hidden;
+  }
+  #payment-main > div > div > div.transitionable > div > article > div.BookingRequest-form.ui.form > div.TourPage-BookingDetails-NoAvailability > div.text::before {
+    visibility: visible;
+    content: 'This show is currently SOLD OUT\\A';
+    white-space: pre-line;
+  }
+}
+
+`;
+    }
+
+    if (advancedCSS.hideAnyRoadLogo) {
+      css += `/* Advanced CSS - Hide AnyRoad Logo from Footer */
+.PoweredBy .Logo {
+  display: none;
 }
 
 `;
@@ -8767,6 +8822,215 @@ li {${elementStyles.lists.backgroundColor || colors.background ? `
                       minWidth: '40px'
                     }}>
                       {advancedCSS.hideAtAGlance ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* BSide FullView Note */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      BSide FullView Note
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+                      Adds an instructional note above ticket guest name fields on checkout, prompting guests to add names or leave blank if unsure.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Message:</div>
+                      <div style={{ color: '#3D57FF', fontStyle: 'italic' }}>"Please add guest names to their tickets. (If you're unsure who is coming with you, leave the form blank. You can add their information later!)"</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      bsideFullViewNote: !advancedCSS.bsideFullViewNote 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.bsideFullViewNote ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.bsideFullViewNote ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.bsideFullViewNote ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.bsideFullViewNote ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* BSide Sold Out Message */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      BSide Sold Out Message
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+                      Replaces the default "no availability" message with a custom "SOLD OUT" message on the booking page.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Message:</div>
+                      <div style={{ color: '#3D57FF', fontStyle: 'italic' }}>"This show is currently SOLD OUT"</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      bsideSoldOutMessage: !advancedCSS.bsideSoldOutMessage 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.bsideSoldOutMessage ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.bsideSoldOutMessage ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.bsideSoldOutMessage ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.bsideSoldOutMessage ? 'ON' : 'OFF'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hide AnyRoad Logo from Footer */}
+              <div style={{
+                background: '#f9f9f9',
+                padding: '24px',
+                borderRadius: '12px',
+                marginBottom: '16px',
+                border: '1px solid #e0e0e0'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ flex: 1 }}>
+                    <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#333', fontWeight: '600' }}>
+                      Hide AnyRoad Logo from Footer
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '14px', color: '#666', lineHeight: '1.6', marginBottom: '16px' }}>
+                      Hides the AnyRoad logo from the "Powered by" footer section.
+                    </p>
+                    <div style={{
+                      marginTop: '12px',
+                      padding: '12px',
+                      background: '#f0f0f0',
+                      borderRadius: '6px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: '#555'
+                    }}>
+                      <div style={{ marginBottom: '4px', fontWeight: '600' }}>Selector:</div>
+                      <div style={{ color: '#3D57FF' }}>.PoweredBy .Logo</div>
+                      <div style={{ marginTop: '8px', marginBottom: '4px', fontWeight: '600' }}>Properties:</div>
+                      <div style={{ color: '#3D57FF' }}>display: none;</div>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div onClick={() => setAdvancedCSS({ 
+                      ...advancedCSS, 
+                      hideAnyRoadLogo: !advancedCSS.hideAnyRoadLogo 
+                    })}
+                      style={{ 
+                        width: '50px', 
+                        height: '28px', 
+                        background: advancedCSS.hideAnyRoadLogo ? '#22c55e' : '#ddd',
+                        borderRadius: '14px', 
+                        position: 'relative', 
+                        cursor: 'pointer', 
+                        transition: 'background 0.3s' 
+                      }}>
+                      <div style={{ 
+                        width: '20px', 
+                        height: '20px', 
+                        background: 'white', 
+                        borderRadius: '50%',
+                        position: 'absolute', 
+                        top: '4px', 
+                        left: advancedCSS.hideAnyRoadLogo ? '26px' : '4px',
+                        transition: 'left 0.3s', 
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)' 
+                      }} />
+                    </div>
+                    <span style={{
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      color: advancedCSS.hideAnyRoadLogo ? '#22c55e' : '#999', 
+                      transition: 'color 0.3s',
+                      textAlign: 'right',
+                      minWidth: '40px'
+                    }}>
+                      {advancedCSS.hideAnyRoadLogo ? 'ON' : 'OFF'}
                     </span>
                   </div>
                 </div>
