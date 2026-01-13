@@ -1406,6 +1406,27 @@ const CSSCustomizer = () => {
         importedCount++;
       }
 
+      // Parse BSide FullView Note
+      if (normalizedCSS.includes('span.ticket-select-label:before') &&
+          normalizedCSS.includes('Please add guest names to their tickets')) {
+        setAdvancedCSS(prev => ({ ...prev, bsideFullViewNote: true }));
+        importedCount++;
+      }
+
+      // Parse BSide Sold Out Message
+      if (normalizedCSS.includes('.TourPage-BookingDetails-NoAvailability') &&
+          normalizedCSS.includes('SOLD OUT')) {
+        setAdvancedCSS(prev => ({ ...prev, bsideSoldOutMessage: true }));
+        importedCount++;
+      }
+
+      // Parse Hide AnyRoad Logo
+      if (normalizedCSS.includes('.PoweredBy .Logo') &&
+          normalizedCSS.includes('display: none')) {
+        setAdvancedCSS(prev => ({ ...prev, hideAnyRoadLogo: true }));
+        importedCount++;
+      }
+
       // Parse Discount Code Button Height Fix
       const discountCodeButtonMatch = normalizedCSS.match(/\.DiscountCodeContainer\s+\.DiscountCode-Input\s+\.ui\.button\s*\{([^}]+)\}/);
       if (discountCodeButtonMatch) {
@@ -1468,6 +1489,9 @@ const CSSCustomizer = () => {
         '#plugins-wrapper', '.TourPage-About-description', 
         '.TourPage-ContactGuide-link', '.TourPage-ContactGuide', '.ContactGuide-link-text',
         '.MobileCheckout-CoverPhoto', '.DiscountCode-Input',
+        // BSide and other advanced selectors
+        '#payment-main', 'span.ticket-select-label', '.TourPage-BookingDetails-NoAvailability',
+        '.PoweredBy',
         // Element selectors
         'li', '.tour-wrapper', '.ui.modal', '.ui.grid', '.TourPage-Glance', '.Plugins-TourPage-GlanceWrapper',
         '.book-tour-btn', '.CheckoutNavigationController', '.BookingRequest-submit',
@@ -1872,6 +1896,15 @@ const CSSCustomizer = () => {
   color: var(--color-heading) !important;` : ''}${typography.headingTextTransform ? `
   text-transform: ${typography.headingTextTransform} !important;` : ''}${typography.headingLetterSpacing ? `
   letter-spacing: ${typography.headingLetterSpacing} !important;` : ''}
+}
+
+`;
+      }
+      
+      // Apply heading color to subtitles (separate block so subtitle font settings don't conflict)
+      if (colors.heading) {
+        css += `.tour-tagline, .TourPage-About-tagline {
+  color: var(--color-heading) !important;
 }
 
 `;
